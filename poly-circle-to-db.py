@@ -188,7 +188,27 @@ def toggle_overlay(canvas):
         artist.set_visible(overlay_visible)
     canvas.draw()
 
-def create_plot(center_x, center_y, tested_radius, sides, real_radius, max_diff, diameter, grid_points):
+def shoelace_area(polygon):
+    """Calculate area using the Shoelace formula."""
+    n = len(polygon)
+    area = 0.0
+    for i in range(n):
+        x0, y0 = polygon[i]
+        x1, y1 = polygon[(i + 1) % n]
+        area += (x0 * y1) - (x1 * y0)
+    return abs(area) / 2.0
+
+def polygon_perimeter(polygon):
+    """Calculate perimeter by summing distances between consecutive points."""
+    perimeter = 0.0
+    n = len(polygon)
+    for i in range(n):
+        x0, y0 = polygon[i]
+        x1, y1 = polygon[(i + 1) % n]
+        perimeter += math.hypot(x1 - x0, y1 - y0)
+    return perimeter
+
+def create_plot(center_x, center_y, tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_points):
     fig = plt.Figure(figsize=(8, 8))
     gs = GridSpec(1, 1, figure=fig)
     ax = fig.add_subplot(gs[0, 0])
@@ -225,13 +245,14 @@ def create_plot(center_x, center_y, tested_radius, sides, real_radius, max_diff,
         f"Sides: {sides}\n"
         f"Real Radius: {real_radius:.4f}\n"
         f"Max Difference: {max_diff:.4f}\n"
-        f"Diameter: {diameter}"
+        f"Diameter: {diameter}\n"
+        f"Circularity: {circularity:.4f}"
     )
     ax.text(0.02, 0.98, config_text, transform=ax.transAxes, fontsize=8,
             verticalalignment='top', color="black",
             bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
 
-    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter})")
+    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter}, Circularity = {circularity:.4f})")
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
 
@@ -245,7 +266,7 @@ def on_row_selected(event, tree, canvas_frame, config):
     if not data_tuple:
         return
 
-    tested_radius, sides, real_radius, max_diff, diameter, grid_points, odd_center_val = data_tuple
+    tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, odd_center_val = data_tuple
 
     # Determine center based on ODD_CENTER
     if config["ODD_CENTER"]:
@@ -270,7 +291,8 @@ def on_row_selected(event, tree, canvas_frame, config):
         real_radius=real_radius,
         max_diff=max_diff,
         diameter=diameter,
-        grid_points=grid_points
+        circularity=circularity,
+        grid_points=polygon
     )
     if fig is None:
         return
@@ -284,7 +306,7 @@ def on_row_selected(event, tree, canvas_frame, config):
     toolbar.update()
     toolbar.pack(side=tk.TOP, fill=tk.X)
 
-    create_overlay(fig.axes[0], center_x, center_y, grid_points)
+    create_overlay(fig.axes[0], center_x, center_y, polygon)
     for artist in overlay_lines + overlay_texts:
         artist.set_visible(overlay_visible)
     canvas.draw()
@@ -316,7 +338,7 @@ def sort_treeview(tree, col, reverse, sort_order):
 
 def get_user_inputs(entries_circle, entries_thresholds, check_dimensions_var, odd_center_var):
     try:
-        # We no longer read CENTER_X and CENTER_Y from entries, they are determined by odd_center_var
+        # We no longer read CENTER_X/Y from entries, they are determined by odd_center_var
         initial_radius = float(entries_circle["INITIAL_RADIUS"].get())
         max_radius = float(entries_circle["MAX_RADIUS"].get())
         radius_increment = float(entries_thresholds["RADIUS_INCREMENT"].get())
@@ -396,43 +418,49 @@ def compute_for_radius(args):
     x_values = [p[0] for p in simplified]
     diameter = max(x_values) - min(x_values)
 
-    return (radius, len(simplified), real_radius, max_diff, diameter, tuple(simplified))
+    # Compute Area and Perimeter for Circularity
+    area = shoelace_area(simplified)
+    perimeter = polygon_perimeter(simplified)
+    circularity = (4 * math.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
+
+    return (radius, len(simplified), real_radius, max_diff, diameter, circularity, tuple(simplified))
 
 def save_results_to_database(results, odd_center_val):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    # Create table if not exists with diameter as INTEGER
+    # Create table if not exists with diameter as INTEGER and circularity as REAL
     c.execute("""CREATE TABLE IF NOT EXISTS results (
                     tested_radius REAL,
                     sides INTEGER,
                     real_radius REAL,
                     max_diff REAL,
                     diameter INTEGER,
+                    circularity REAL,
                     grid_points TEXT,
                     odd_center INTEGER,
                     UNIQUE(grid_points, odd_center)
                 )""")
     for r in results:
-        tested_radius, sides, real_radius, max_diff, diameter, polygon = r
+        tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon = r
         polygon_str = ",".join(f"({x},{y})" for x,y in polygon)
 
         # Check if this polygon with the same odd_center already exists
-        c.execute("SELECT tested_radius, sides, real_radius, max_diff, diameter FROM results WHERE grid_points = ? AND odd_center = ?", (polygon_str, odd_center_val))
+        c.execute("SELECT tested_radius, sides, real_radius, max_diff, diameter, circularity FROM results WHERE grid_points = ? AND odd_center = ?", (polygon_str, odd_center_val))
         existing = c.fetchone()
 
         if existing is not None:
             # Polygon already in DB with the same odd_center
-            existing_tested_radius, existing_sides, existing_real_radius, existing_max_diff, existing_diameter = existing
-            # If new tested radius is smaller, replace the old
+            existing_tested_radius, existing_sides, existing_real_radius, existing_max_diff, existing_diameter, existing_circularity = existing
+            # If new tested_radius is smaller, replace the old
             if tested_radius < existing_tested_radius:
-                c.execute("""UPDATE results SET tested_radius=?, sides=?, real_radius=?, max_diff=?, diameter=? 
+                c.execute("""UPDATE results SET tested_radius=?, sides=?, real_radius=?, max_diff=?, diameter=?, circularity=? 
                              WHERE grid_points=? AND odd_center=?""",
-                          (tested_radius, sides, real_radius, max_diff, diameter, polygon_str, odd_center_val))
+                          (tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon_str, odd_center_val))
             # If not smaller, do nothing (no insert)
         else:
-            # Insert the new record with odd_center and diameter
-            c.execute("INSERT INTO results (tested_radius, sides, real_radius, max_diff, diameter, grid_points, odd_center) VALUES (?,?,?,?,?,?,?)",
-                      (tested_radius, sides, real_radius, max_diff, diameter, polygon_str, odd_center_val))
+            # Insert the new record with odd_center, diameter, and circularity
+            c.execute("INSERT INTO results (tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_points, odd_center) VALUES (?,?,?,?,?,?,?,?)",
+                      (tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon_str, odd_center_val))
 
     conn.commit()
     conn.close()
@@ -483,7 +511,7 @@ def on_calculate_click(entries_circle, entries_thresholds, check_dimensions_var,
         seen_polygons = set()
         filtered_results = []
         for res in results:
-            tested_radius, sides, real_radius, max_diff, diameter, polygon = res
+            tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon = res
             if polygon not in seen_polygons:
                 seen_polygons.add(polygon)
                 filtered_results.append(res)
@@ -508,7 +536,7 @@ def on_calculate_click(entries_circle, entries_thresholds, check_dimensions_var,
                 return
 
             for data_tuple in filtered_results:
-                tested_radius, sides, real_radius, max_diff, diameter, polygon = data_tuple
+                tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon = data_tuple
                 odd_center = "Yes" if odd_center_val else "No"
                 iid = tree.insert("", tk.END, values=(
                     f"{tested_radius:.4f}",
@@ -516,12 +544,13 @@ def on_calculate_click(entries_circle, entries_thresholds, check_dimensions_var,
                     f"{real_radius:.4f}",
                     f"{max_diff:.4f}",
                     odd_center,
-                    f"{diameter}"
+                    f"{diameter}",
+                    f"{circularity:.4f}"
                 ))
-                tree.item_data[iid] = (tested_radius, sides, real_radius, max_diff, diameter, polygon, odd_center_val)
+                tree.item_data[iid] = (tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, odd_center_val)
 
-            sort_order = {col: False for col in ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter")}
-            for col in ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter"):
+            sort_order = {col: False for col in ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity")}
+            for col in ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity"):
                 tree.heading(col, text=col, command=lambda _col=col: sort_treeview(tree, _col, sort_order[_col], sort_order))
 
             if tree.get_children():
@@ -547,8 +576,9 @@ def export_to_csv(valid_data):
             "Sides": [f"{r[1]}" for r in valid_data],
             "Real Radius": [f"{r[2]:.4f}" for r in valid_data],
             "Max Difference": [f"{r[3]:.4f}" for r in valid_data],
-            "Odd Center": ["Yes" if r[6] else "No" for r in valid_data],
-            "Diameter": [f"{r[4]}" for r in valid_data]  # Diameter as integer
+            "Odd Center": ["Yes" if r[7] else "No" for r in valid_data],
+            "Diameter": [f"{r[4]}" for r in valid_data],         # Diameter as integer
+            "Circularity": [f"{r[5]:.4f}" for r in valid_data]   # Circularity as float
         }
         df = pd.DataFrame(data)
         file_path = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -563,7 +593,7 @@ def main():
     global root
     root = tk.Tk()
     root.title("Polygon Radius App")
-    root.geometry("1200x800")
+    root.geometry("1200x900")
 
     input_frame = ttk.Frame(root)
     input_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
@@ -616,8 +646,8 @@ def main():
     calculate_button = ttk.Button(buttons_frame, text="Calculate")
     calculate_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-    # Define Treeview Columns including "Odd Center" and "Diameter"
-    columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter")
+    # Define Treeview Columns including "Odd Center", "Diameter", and "Circularity"
+    columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity")
 
     # Export Button
     export_button = ttk.Button(buttons_frame, text="Export to CSV", command=lambda: export_to_csv(list(tree.item_data.values())))
@@ -644,7 +674,7 @@ def main():
     tree = ttk.Treeview(table_frame, columns=columns, show='headings', selectmode='browse')
     for col in columns:
         tree.heading(col, text=col)
-        tree.column(col, anchor=tk.CENTER, width=100)
+        tree.column(col, anchor=tk.CENTER, width=90)
     scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
     tree.configure(yscroll=scrollbar.set)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)

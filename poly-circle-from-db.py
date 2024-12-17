@@ -101,7 +101,7 @@ def toggle_overlay(canvas):
         artist.set_visible(overlay_visible)
     canvas.draw()
 
-def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, diameter, grid_points):
+def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_points):
     if odd_center == 1:
         center_x, center_y = 0.5, 0.5
     else:
@@ -143,13 +143,14 @@ def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, diamete
         f"Sides: {sides}\n"
         f"Real Radius: {real_radius:.4f}\n"
         f"Max Difference: {max_diff:.4f}\n"
-        f"Diameter: {diameter}"
+        f"Diameter: {diameter}\n"
+        f"Circularity: {circularity:.4f}"
     )
     ax.text(0.02, 0.98, config_text, transform=ax.transAxes, fontsize=8,
             verticalalignment='top', color="black",
             bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
 
-    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter})")
+    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter}, Circularity = {circularity:.4f})")
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
 
@@ -163,7 +164,13 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     if not data_tuple:
         return
 
-    tested_radius, sides, real_radius, max_diff, diameter, polygon, db_odd_center = data_tuple
+    tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, db_odd_center = data_tuple
+
+    # Determine center based on ODD_CENTER
+    if db_odd_center:
+        center_x, center_y = 0.5, 0.5
+    else:
+        center_x, center_y = 0.0, 0.0
 
     for widget in canvas_frame.winfo_children():
         widget.destroy()
@@ -175,13 +182,14 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     plot_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
     fig = create_plot(
-        db_odd_center,
-        tested_radius,
-        sides,
-        real_radius,
-        max_diff,
-        diameter,
-        polygon
+        odd_center=db_odd_center,
+        tested_radius=tested_radius,
+        sides=sides,
+        real_radius=real_radius,
+        max_diff=max_diff,
+        diameter=diameter,
+        circularity=circularity,
+        grid_points=polygon
     )
     if fig is None:
         return
@@ -194,11 +202,6 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     toolbar = NavigationToolbar2Tk(canvas, toolbar_frame)
     toolbar.update()
     toolbar.pack(side=tk.TOP, fill=tk.X)
-
-    if db_odd_center == 1:
-        center_x, center_y = 0.5, 0.5
-    else:
-        center_x, center_y = 0.0, 0.0
 
     create_overlay(fig.axes[0], center_x, center_y, polygon)
     for artist in overlay_lines + overlay_texts:
@@ -241,6 +244,7 @@ def export_to_csv(valid_data):
             "Real Radius": [f"{r[2]:.4f}" for r in valid_data],
             "Max Difference": [f"{r[3]:.4f}" for r in valid_data],
             "Diameter": [f"{r[4]}" for r in valid_data],  # Diameter as integer
+            "Circularity": [f"{r[5]:.4f}" for r in valid_data],  # Circularity as float
             "Odd Center": ["Yes" if r[6] else "No" for r in valid_data]
         }
         df = pd.DataFrame(data)
@@ -256,7 +260,7 @@ def load_results_from_db(difference_threshold, odd_center_val, min_radius, max_r
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     # Now we filter by difference_threshold, odd_center, tested_radius between min_radius and max_radius, and diameter range
-    c.execute("""SELECT tested_radius, sides, real_radius, max_diff, diameter, grid_points, odd_center 
+    c.execute("""SELECT tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_points, odd_center 
                  FROM results 
                  WHERE max_diff <= ? AND odd_center = ? AND tested_radius >= ? AND tested_radius <= ?
                  AND diameter >= ? AND diameter <= ?""",
@@ -266,7 +270,7 @@ def load_results_from_db(difference_threshold, odd_center_val, min_radius, max_r
 
     final_results = []
     for row in rows:
-        tested_radius, sides, real_radius, max_diff, diameter, grid_str, db_odd_center = row
+        tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_str, db_odd_center = row
         points_str = grid_str.strip()
         point_pairs = points_str.split(')')
         points = []
@@ -279,7 +283,7 @@ def load_results_from_db(difference_threshold, odd_center_val, min_radius, max_r
                 x, y = float(x_str), float(y_str)
                 points.append((x,y))
         polygon = tuple(points)
-        final_results.append((tested_radius, sides, real_radius, max_diff, diameter, polygon, db_odd_center))
+        final_results.append((tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, db_odd_center))
 
     return final_results
 
@@ -326,14 +330,15 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
     # Sort by sides ascending
     results.sort(key=lambda x: x[1])
     for data_tuple in results:
-        tested_radius, sides, real_radius, max_diff, diameter, polygon, db_odd_center = data_tuple
+        tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, db_odd_center = data_tuple
         iid = tree.insert("", tk.END, values=(
             f"{tested_radius:.4f}",
             f"{sides}",
             f"{real_radius:.4f}",
             f"{max_diff:.4f}",
             "Yes" if db_odd_center else "No",
-            f"{diameter}"
+            f"{diameter}",
+            f"{circularity:.4f}"
         ))
         tree.item_data[iid] = data_tuple
 
@@ -347,7 +352,7 @@ def main():
     global root
     root = tk.Tk()
     root.title("Polygon Radius App (Database Edition)")
-    root.geometry("1600x900")  # Increased width to accommodate additional inputs
+    root.geometry("1200x900")
 
     input_frame = ttk.Frame(root)
     input_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
@@ -425,8 +430,8 @@ def main():
                              command=lambda: on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_diameter, tree, canvas_frame))
     load_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-    # Define Treeview Columns including "Diameter"
-    columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter")
+    # Define Treeview Columns including "Diameter" and "Circularity"
+    columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity")
 
     # Export Button
     export_button = ttk.Button(buttons_frame, text="Export to CSV", command=lambda: export_to_csv(list(tree.item_data.values())))
@@ -450,7 +455,7 @@ def main():
     tree = ttk.Treeview(table_frame, columns=columns, show='headings', selectmode='browse')
     for col in columns:
         tree.heading(col, text=col)
-        tree.column(col, anchor=tk.CENTER, width=100)
+        tree.column(col, anchor=tk.CENTER, width=90)
     scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
     tree.configure(yscroll=scrollbar.set)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
