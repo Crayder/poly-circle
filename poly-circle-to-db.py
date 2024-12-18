@@ -15,6 +15,8 @@ from math import gcd
 from multiprocessing import Pool, cpu_count
 import sqlite3
 
+MAX_CPU_CORES = 4
+
 # Use the TkAgg backend for matplotlib
 matplotlib.use("TkAgg")
 
@@ -499,7 +501,7 @@ def on_calculate_click(entries_circle, entries_thresholds, check_dimensions_var,
     def run_computation():
         results = []
         count = 0
-        with Pool(processes=cpu_count()) as pool:
+        with Pool(processes=min(cpu_count(), 4)) as pool:
             for res in pool.imap_unordered(compute_for_radius, [(center_x, center_y, rad, check_dimensions_flag, difference_threshold) for rad in radii]):
                 if res is not None:
                     results.append(res)
