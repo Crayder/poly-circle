@@ -12,7 +12,6 @@ import os
 import math
 import sqlite3
 
-# Use the TkAgg backend for matplotlib
 matplotlib.use("TkAgg")
 
 # Default Configuration Constants
@@ -22,7 +21,8 @@ DEFAULT_CONFIG = {
     "MIN_RADIUS": 1.0,
     "MAX_RADIUS": 200.0,
     "MIN_DIAMETER": 1,
-    "MAX_DIAMETER": 400
+    "MAX_DIAMETER": 400,
+    "CIRCULARITY_THRESHOLD": 0.0
 }
 
 overlay_lines = []
@@ -217,7 +217,7 @@ def sort_treeview(tree, col, reverse, sort_order):
 
     try:
         # Attempt to convert to float for numeric sorting
-        float(l[0][0].replace(',', ''))  # Remove commas if any
+        float(l[0][0].replace(',', ''))
         is_numeric = True
     except ValueError:
         is_numeric = False
@@ -233,19 +233,26 @@ def sort_treeview(tree, col, reverse, sort_order):
     sort_order[col] = not reverse
     tree.heading(col, command=lambda: sort_treeview(tree, col, sort_order[col], sort_order))
 
-def export_to_csv(valid_data):
+def export_to_csv(valid_data, tree):
     if not valid_data:
         messagebox.showinfo("No Data", "There is no data to export.")
         return
     try:
+        min_circularity = getattr(tree, 'min_circularity', None)
+        if min_circularity is None:
+            min_circularity = 0.0
+
         data = {
             "Tested Radius": [f"{r[0]:.4f}" for r in valid_data],
             "Sides": [f"{r[1]}" for r in valid_data],
             "Real Radius": [f"{r[2]:.4f}" for r in valid_data],
             "Max Difference": [f"{r[3]:.4f}" for r in valid_data],
-            "Diameter": [f"{r[4]}" for r in valid_data],  # Diameter as integer
-            "Circularity": [f"{r[5]:.4f}" for r in valid_data],  # Circularity as float
-            "Odd Center": ["Yes" if r[6] else "No" for r in valid_data]
+            "Diameter": [f"{r[4]}" for r in valid_data],
+            "Circularity": [
+                f"{((r[5] - min_circularity)/(1 - min_circularity) if (1 - min_circularity) != 0 else 1.0):.4f}" 
+                for r in valid_data
+            ],   # Scaled Circularity based on database lower bound
+            "Odd Center": ["Yes" if r[7] else "No" for r in valid_data]
         }
         df = pd.DataFrame(data)
         file_path = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -256,15 +263,20 @@ def export_to_csv(valid_data):
     except Exception as e:
         messagebox.showerror("Export Failed", f"Failed to export data: {e}")
 
-def load_results_from_db(difference_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter):
+def load_results_from_db(difference_threshold, circularity_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    # Now we filter by difference_threshold, odd_center, tested_radius between min_radius and max_radius, and diameter range
+
+    # Retrieve the minimum circularity from the entire database
+    c.execute("SELECT MIN(circularity) FROM results")
+    min_circularity_row = c.fetchone()
+    min_circularity = min_circularity_row[0] if min_circularity_row[0] is not None else 0.0
+
     c.execute("""SELECT tested_radius, sides, real_radius, max_diff, diameter, circularity, grid_points, odd_center 
                  FROM results 
-                 WHERE max_diff <= ? AND odd_center = ? AND tested_radius >= ? AND tested_radius <= ?
+                 WHERE max_diff <= ? AND circularity >= ? AND odd_center = ? AND tested_radius >= ? AND tested_radius <= ?
                  AND diameter >= ? AND diameter <= ?""",
-              (difference_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter))
+              (difference_threshold, circularity_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter))
     rows = c.fetchall()
     conn.close()
 
@@ -279,19 +291,26 @@ def load_results_from_db(difference_threshold, odd_center_val, min_radius, max_r
             if p.startswith('('):
                 p = p[1:]
             if p:
-                x_str, y_str = p.split(',')
-                x, y = float(x_str), float(y_str)
-                points.append((x,y))
+                try:
+                    x_str, y_str = p.split(',')
+                    x, y = float(x_str), float(y_str)
+                    points.append((x,y))
+                except ValueError:
+                    continue  # Skip malformed points (though this should not happen if the database is correct)
         polygon = tuple(points)
         final_results.append((tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, db_odd_center))
 
-    return final_results
+    return final_results, min_circularity
 
 def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_diameter, tree, canvas_frame):
     try:
         difference_threshold = float(entries_thresholds["DIFFERENCE_THRESHOLD"].get())
         if difference_threshold < 0:
             raise ValueError("Difference Threshold cannot be negative.")
+
+        circularity_threshold = float(entries_thresholds["CIRCULARITY_THRESHOLD"].get())
+        if not (0.0 <= circularity_threshold <= 1.0):
+            raise ValueError("Circularity Threshold must be between 0.0 and 1.0.")
 
         min_radius = float(entries_radius["MIN_RADIUS"].get())
         max_radius = float(entries_radius["MAX_RADIUS"].get())
@@ -315,7 +334,8 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
         return
 
     odd_center_val = 1 if odd_center_var.get() else 0
-    results = load_results_from_db(difference_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
+    circularity_threshold = float(entries_thresholds["CIRCULARITY_THRESHOLD"].get())
+    results, min_circularity = load_results_from_db(difference_threshold, circularity_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
 
     for item in tree.get_children():
         tree.delete(item)
@@ -329,8 +349,16 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
 
     # Sort by sides ascending
     results.sort(key=lambda x: x[1])
+    tree.min_circularity = min_circularity
+
     for data_tuple in results:
         tested_radius, sides, real_radius, max_diff, diameter, circularity, polygon, db_odd_center = data_tuple
+        if (1 - min_circularity) != 0:
+            scaled_circularity = (circularity - min_circularity) / (1 - min_circularity)
+        else:
+            scaled_circularity = 1.0
+        scaled_circularity = max(0.0, scaled_circularity)  # Ensure non-negative
+
         iid = tree.insert("", tk.END, values=(
             f"{tested_radius:.4f}",
             f"{sides}",
@@ -338,7 +366,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
             f"{max_diff:.4f}",
             "Yes" if db_odd_center else "No",
             f"{diameter}",
-            f"{circularity:.4f}"
+            f"{scaled_circularity:.4f}"
         ))
         tree.item_data[iid] = data_tuple
 
@@ -391,6 +419,14 @@ def main():
     entry_diff.insert(0, str(DEFAULT_CONFIG["DIFFERENCE_THRESHOLD"]))
     entries_thresholds["DIFFERENCE_THRESHOLD"] = entry_diff
 
+    # Circularity Threshold Entry
+    label_circ_thresh = ttk.Label(thresholds_frame, text="Circularity Threshold:")
+    label_circ_thresh.grid(row=1, column=0, padx=5, pady=5, sticky=tk.E)
+    entry_circ_thresh = ttk.Entry(thresholds_frame, width=15)
+    entry_circ_thresh.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+    entry_circ_thresh.insert(0, str(DEFAULT_CONFIG["CIRCULARITY_THRESHOLD"]))
+    entries_thresholds["CIRCULARITY_THRESHOLD"] = entry_circ_thresh
+
     # Min Radius Entry
     entries_radius = {}
     label_min_radius = ttk.Label(radius_frame, text="Min Radius:")
@@ -430,11 +466,11 @@ def main():
                              command=lambda: on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_diameter, tree, canvas_frame))
     load_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-    # Define Treeview Columns including "Diameter" and "Circularity"
+    # Define Treeview Columns
     columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity")
 
     # Export Button
-    export_button = ttk.Button(buttons_frame, text="Export to CSV", command=lambda: export_to_csv(list(tree.item_data.values())))
+    export_button = ttk.Button(buttons_frame, text="Export to CSV", command=lambda: export_to_csv(list(tree.item_data.values()), tree))
     export_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
     # Overlay Checkbox
