@@ -17,7 +17,6 @@ import sqlite3
 
 MAX_CPU_CORES = 4
 
-# Use the TkAgg backend for matplotlib
 matplotlib.use("TkAgg")
 
 # Default Configuration Constants
@@ -191,7 +190,6 @@ def toggle_overlay(canvas):
     canvas.draw()
 
 def shoelace_area(polygon):
-    """Calculate area using the Shoelace formula."""
     n = len(polygon)
     area = 0.0
     for i in range(n):
@@ -201,7 +199,6 @@ def shoelace_area(polygon):
     return abs(area) / 2.0
 
 def polygon_perimeter(polygon):
-    """Calculate perimeter by summing distances between consecutive points."""
     perimeter = 0.0
     n = len(polygon)
     for i in range(n):
@@ -322,7 +319,7 @@ def sort_treeview(tree, col, reverse, sort_order):
 
     try:
         # Attempt to convert to float for numeric sorting
-        float(l[0][0].replace(',', ''))  # Remove commas if any
+        float(l[0][0].replace(',', ''))
         is_numeric = True
     except ValueError:
         is_numeric = False
@@ -340,7 +337,6 @@ def sort_treeview(tree, col, reverse, sort_order):
 
 def get_user_inputs(entries_circle, entries_thresholds, check_dimensions_var, odd_center_var):
     try:
-        # We no longer read CENTER_X/Y from entries, they are determined by odd_center_var
         initial_radius = float(entries_circle["INITIAL_RADIUS"].get())
         max_radius = float(entries_circle["MAX_RADIUS"].get())
         radius_increment = float(entries_thresholds["RADIUS_INCREMENT"].get())
@@ -430,7 +426,7 @@ def compute_for_radius(args):
 def save_results_to_database(results, odd_center_val):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    # Create table if not exists with diameter as INTEGER and circularity as REAL
+    # Create table if not exists (TODO: should change this so that it's only created once, doing this every iteration is inefficient)
     c.execute("""CREATE TABLE IF NOT EXISTS results (
                     tested_radius REAL,
                     sides INTEGER,
@@ -612,7 +608,7 @@ def main():
     buttons_frame = ttk.Frame(input_frame)
     buttons_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    # Circle Parameters (No CENTER_X/Y, just INITIAL_RADIUS and MAX_RADIUS)
+    # Circle Parameters
     inputs_circle = ["INITIAL_RADIUS", "MAX_RADIUS"]
     entries_circle = {}
     for i, key in enumerate(inputs_circle):
@@ -634,7 +630,7 @@ def main():
         entry.insert(0, str(DEFAULT_CONFIG[key]))
         entries_thresholds[key] = entry
 
-    # ODD_CENTER Checkbox
+    # Odd Center Checkbox
     odd_center_var = tk.BooleanVar(value=DEFAULT_CONFIG["ODD_CENTER"])
     odd_center_chk = ttk.Checkbutton(options_frame, text="Odd Center", variable=odd_center_var)
     odd_center_chk.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
@@ -648,7 +644,7 @@ def main():
     calculate_button = ttk.Button(buttons_frame, text="Calculate")
     calculate_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-    # Define Treeview Columns including "Odd Center", "Diameter", and "Circularity"
+    # Define Treeview Columns
     columns = ("Tested Radius", "Sides", "Real Radius", "Max Difference", "Odd Center", "Diameter", "Circularity")
 
     # Export Button
