@@ -8,6 +8,7 @@ from tkinter import messagebox
 from matplotlib.gridspec import GridSpec
 from tkinter import filedialog
 import pandas as pd
+import sys
 import os
 import math
 import sqlite3
@@ -28,6 +29,14 @@ DEFAULT_CONFIG = {
 overlay_lines = []
 overlay_texts = []
 overlay_visible = False
+
+# Database path constant
+def get_resource_path(relative_path): # For dev and packaging
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+DATABASE_PATH = get_resource_path("results.db")
 
 def distance_to_center(center_x, center_y, grid_x, grid_y):
     return np.sqrt((grid_x - center_x)**2 + (grid_y - center_y)**2)
@@ -264,7 +273,7 @@ def export_to_csv(valid_data, tree):
         messagebox.showerror("Export Failed", f"Failed to export data: {e}")
 
 def load_results_from_db(difference_threshold, circularity_threshold, odd_center_val, min_radius, max_radius, min_diameter, max_diameter):
-    conn = sqlite3.connect("results.db")
+    conn = sqlite3.connect(DATABASE_PATH)
     c = conn.cursor()
 
     # Retrieve the minimum circularity from the entire database
