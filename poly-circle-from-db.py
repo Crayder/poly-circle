@@ -474,9 +474,6 @@ def main():
     input_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
     # --- Normal Mode Frames ---
-    # Options Frame
-    options_frame = ttk.LabelFrame(input_frame, text="Options")
-    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     # Thresholds Frame
     thresholds_frame = ttk.LabelFrame(input_frame, text="Thresholds")
@@ -491,19 +488,16 @@ def main():
     diameter_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     # We'll hold these frames in a list so we can hide/show them in custom mode
-    normal_mode_frames = [options_frame, thresholds_frame, radius_frame, diameter_frame]
+    normal_mode_frames = [thresholds_frame, radius_frame, diameter_frame]
 
     # --- Buttons Frame (always visible) ---
     buttons_frame = ttk.Frame(input_frame)
     buttons_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    # Odd Center Checkbox
-    odd_center_var = tk.BooleanVar(value=DEFAULT_CONFIG["ODD_CENTER"])
-    odd_center_chk = ttk.Checkbutton(options_frame, text="Odd Center", variable=odd_center_var)
-    odd_center_chk.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-
-    # Difference Threshold Entry
+    # --- Thresholds Frame Inputs ---
     entries_thresholds = {}
+    
+    # Difference Threshold
     label_diff = ttk.Label(thresholds_frame, text="Difference Threshold:")
     label_diff.grid(row=0, column=0, padx=5, pady=5, sticky=tk.E)
     entry_diff = ttk.Entry(thresholds_frame, width=15)
@@ -522,12 +516,12 @@ def main():
     # Uniformity Threshold Entry
     label_uniform_thresh = ttk.Label(thresholds_frame, text="Uniformity Threshold:")
     label_uniform_thresh.grid(row=2, column=0, padx=5, pady=5, sticky=tk.E)
-    spin_uniform_thresh = ttk.Spinbox(thresholds_frame, from_=0.0, to=1.0, increment=0.01, width=13)
-    spin_uniform_thresh.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-    spin_uniform_thresh.set(str(DEFAULT_CONFIG["UNIFORMITY_THRESHOLD"]))
-    entries_thresholds["UNIFORMITY_THRESHOLD"] = spin_uniform_thresh
+    entry_uniform_thresh = ttk.Entry(thresholds_frame, width=15)
+    entry_uniform_thresh.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+    entry_uniform_thresh.insert(0, str(DEFAULT_CONFIG["UNIFORMITY_THRESHOLD"]))
+    entries_thresholds["UNIFORMITY_THRESHOLD"] = entry_uniform_thresh
 
-    # Max Width Entry
+    # Max Width
     label_max_width = ttk.Label(thresholds_frame, text="Max Width:")
     label_max_width.grid(row=3, column=0, padx=5, pady=5, sticky=tk.E)
     spin_max_width = ttk.Spinbox(thresholds_frame, from_=1, to=8, width=13)
@@ -568,6 +562,11 @@ def main():
     spin_max_diameter.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
     spin_max_diameter.set(str(DEFAULT_CONFIG["MAX_DIAMETER"]))
     entries_diameter["MAX_DIAMETER"] = spin_max_diameter
+
+    # Odd Center Checkbox (Moved from Options Frame to Diameter Range Frame)
+    odd_center_var = tk.BooleanVar(value=DEFAULT_CONFIG["ODD_CENTER"])
+    odd_center_chk = ttk.Checkbutton(diameter_frame, text="Odd Center", variable=odd_center_var)
+    odd_center_chk.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W)
 
     # --- Custom Query Mode UI (Initially Hidden) ---
     custom_query_var = tk.BooleanVar(value=False)
