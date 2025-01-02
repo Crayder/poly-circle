@@ -20,11 +20,13 @@ matplotlib.use("TkAgg")
 DEFAULT_CONFIG = {
     "DIFFERENCE_THRESHOLD": 0.5,
     "CIRCULARITY_THRESHOLD": 0.0,
+    "UNIFORMITY_THRESHOLD": 0.0,
     "ODD_CENTER": False,
     "MIN_RADIUS": 1.0,
     "MAX_RADIUS": 200.0,
     "MIN_DIAMETER": 1,
-    "MAX_DIAMETER": 400
+    "MAX_DIAMETER": 400,
+    "MAX_WIDTH": 8
 }
 
 overlay_lines = []
@@ -292,10 +294,10 @@ def export_to_csv(valid_data, tree):
     except Exception as e:
         messagebox.showerror("Export Failed", f"Failed to export data: {e}")
 
-def load_results_from_db(difference_threshold, circularity_threshold, odd_center_val,
+def load_results_from_db(difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold, odd_center_val,
                          min_radius, max_radius, min_diameter, max_diameter):
     """
-    Normal mode fetch: uses parameters to build a query with conditions on max_diff, circularity, etc.
+    Normal mode fetch: uses parameters to build a query with conditions on max_diff, circularity, uniformity, max_width, etc.
     """
     conn = sqlite3.connect(DATABASE_PATH)
     c = conn.cursor()
@@ -306,14 +308,16 @@ def load_results_from_db(difference_threshold, circularity_threshold, odd_center
                  FROM results
                  WHERE max_diff <= ?
                    AND circularity >= ?
+                   AND uniformity >= ?
+                   AND max_width <= ?
                    AND odd_center = ?
                    AND tested_radius >= ?
                    AND tested_radius <= ?
                    AND diameter >= ?
                    AND diameter <= ?
               """,
-              (difference_threshold, circularity_threshold, odd_center_val,
-               min_radius, max_radius, min_diameter, max_diameter))
+              (difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
+               odd_center_val, min_radius, max_radius, min_diameter, max_diameter))
     rows = c.fetchall()
     conn.close()
     return rows  # Each row has 10 columns
@@ -352,6 +356,14 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
             if not (0.0 <= circularity_threshold <= 1.0):
                 raise ValueError("Circularity Threshold must be between 0.0 and 1.0.")
 
+            uniformity_threshold = float(entries_thresholds["UNIFORMITY_THRESHOLD"].get())
+            if not (0.0 <= uniformity_threshold <= 1.0):
+                raise ValueError("Uniformity Threshold must be between 0.0 and 1.0.")
+
+            max_width_threshold = int(entries_thresholds["MAX_WIDTH"].get())
+            if not (1 <= max_width_threshold <= 8):
+                raise ValueError("Max Width must be between 1 and 8.")
+
             min_radius = float(entries_radius["MIN_RADIUS"].get())
             max_radius = float(entries_radius["MAX_RADIUS"].get())
             if min_radius < 0 or min_radius > 200:
@@ -371,8 +383,8 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
                 raise ValueError("Min Diameter cannot be greater than Max Diameter.")
 
             odd_center_val = 1 if odd_center_var.get() else 0
-            rows = load_results_from_db(difference_threshold, circularity_threshold, odd_center_val,
-                                        min_radius, max_radius, min_diameter, max_diameter)
+            rows = load_results_from_db(difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
+                                        odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
 
     except ValueError as ve:
         messagebox.showerror("Invalid Input", str(ve))
@@ -399,7 +411,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
     rows = sorted(rows, key=lambda x: x[1])  # x[1] = sides
 
     # Insert into the TreeView
-    # columns = ("tested_radius", "sides", "real_radius", "max_diff", "max_width", "diameter", "circularity", "odd_center")
+    # columns = ("tested_radius", "sides", "real_radius", "max_diff", "max_width", "diameter", "circularity", "uniformity", "odd_center")
     for row in rows:
         # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center, uniformity)
         tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val, uniformity = row
@@ -506,6 +518,22 @@ def main():
     entry_circ_thresh.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
     entry_circ_thresh.insert(0, str(DEFAULT_CONFIG["CIRCULARITY_THRESHOLD"]))
     entries_thresholds["CIRCULARITY_THRESHOLD"] = entry_circ_thresh
+
+    # Uniformity Threshold Entry
+    label_uniform_thresh = ttk.Label(thresholds_frame, text="Uniformity Threshold:")
+    label_uniform_thresh.grid(row=2, column=0, padx=5, pady=5, sticky=tk.E)
+    spin_uniform_thresh = ttk.Spinbox(thresholds_frame, from_=0.0, to=1.0, increment=0.01, width=13)
+    spin_uniform_thresh.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+    spin_uniform_thresh.set(str(DEFAULT_CONFIG["UNIFORMITY_THRESHOLD"]))
+    entries_thresholds["UNIFORMITY_THRESHOLD"] = spin_uniform_thresh
+
+    # Max Width Entry
+    label_max_width = ttk.Label(thresholds_frame, text="Max Width:")
+    label_max_width.grid(row=3, column=0, padx=5, pady=5, sticky=tk.E)
+    spin_max_width = ttk.Spinbox(thresholds_frame, from_=1, to=8, width=13)
+    spin_max_width.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+    spin_max_width.set(str(DEFAULT_CONFIG["MAX_WIDTH"]))
+    entries_thresholds["MAX_WIDTH"] = spin_max_width
 
     # Min Radius Entry
     entries_radius = {}
