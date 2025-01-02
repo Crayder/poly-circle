@@ -6,7 +6,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
-from tkinter import scrolledtext
 from matplotlib.gridspec import GridSpec
 import pandas as pd
 import sys
@@ -21,7 +20,7 @@ DEFAULT_CONFIG = {
     "DIFFERENCE_THRESHOLD": 0.5,
     "CIRCULARITY_THRESHOLD": 0.0,
     "UNIFORMITY_THRESHOLD": 0.0,
-    "ODD_CENTER": False,
+    "ODD_CENTER": "Both",  # Changed to string for selection
     "MIN_RADIUS": 1.0,
     "MAX_RADIUS": 200.0,
     "MIN_DIAMETER": 1,
@@ -114,9 +113,11 @@ def toggle_overlay(canvas):
     canvas.draw()
 
 def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, uniformity, grid_points):
-    if odd_center == 1:
+    if odd_center == "Odd":
         center_x, center_y = 0.5, 0.5
-    else:
+    elif odd_center == "Even":
+        center_x, center_y = 0.0, 0.0
+    else:  # Both
         center_x, center_y = 0.0, 0.0
 
     fig = plt.Figure(figsize=(8, 8))
@@ -150,7 +151,7 @@ def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_wid
     ax.set_ylim(center_y - approx_radius - 1, center_y + approx_radius + 1)
 
     config_text = (
-        f"Odd Center: {'Yes' if odd_center == 1 else 'No'}\n"
+        f"Odd Center: {'Yes' if odd_center == 'Odd' else ('No' if odd_center == 'Even' else 'Both')}\n"
         f"Tested Radius: {tested_radius:.4f}\n"
         f"Sides: {sides}\n"
         f"Real Radius: {real_radius:.4f}\n"
@@ -231,7 +232,7 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     toolbar.update()
     toolbar.pack(side=tk.TOP, fill=tk.X)
 
-    # If odd_center=1 => center=(0.5, 0.5), else center=(0,0)
+    # Create overlay based on odd_center
     if db_odd_center == 1:
         center_x, center_y = 0.5, 0.5
     else:
@@ -302,89 +303,82 @@ def load_results_from_db(difference_threshold, circularity_threshold, uniformity
     conn = sqlite3.connect(DATABASE_PATH)
     c = conn.cursor()
 
-    # Construct normal filter
-    c.execute("""SELECT tested_radius, sides, real_radius, max_diff, max_width, diameter, 
-                        circularity, grid_points, odd_center, uniformity
-                 FROM results
-                 WHERE max_diff <= ?
-                   AND circularity >= ?
-                   AND uniformity >= ?
-                   AND max_width <= ?
-                   AND odd_center = ?
-                   AND tested_radius >= ?
-                   AND tested_radius <= ?
-                   AND diameter >= ?
-                   AND diameter <= ?
-              """,
-              (difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
-               odd_center_val, min_radius, max_radius, min_diameter, max_diameter))
+    # Start constructing the query
+    query = """SELECT tested_radius, sides, real_radius, max_diff, max_width, diameter, 
+                      circularity, grid_points, odd_center, uniformity
+               FROM results
+               WHERE max_diff <= ?
+                 AND circularity >= ?
+                 AND uniformity >= ?
+                 AND max_width <= ?
+                 AND tested_radius >= ?
+                 AND tested_radius <= ?
+                 AND diameter >= ?
+                 AND diameter <= ?
+            """
+
+    params = [difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
+              min_radius, max_radius, min_diameter, max_diameter]
+
+    # Add odd_center condition based on selection
+    if odd_center_val == "Odd":
+        query += " AND odd_center = ?"
+        params.append(1)
+    elif odd_center_val == "Even":
+        query += " AND odd_center = ?"
+        params.append(0)
+    # If "Both", do not add any condition on odd_center
+
+    c.execute(query, tuple(params))
     rows = c.fetchall()
     conn.close()
     return rows  # Each row has 10 columns
 
 def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_diameter, 
-                  tree, canvas_frame, custom_query_var, custom_query_text):
+                  tree, canvas_frame):
     """
-    If custom_query_var is checked, run the user's custom query.
-    Otherwise, do the normal load_results_from_db flow.
+    Load data based on the user inputs and display in the TreeView.
     """
     try:
-        if custom_query_var.get():
-            # User wants to run a custom query
-            query_suffix = custom_query_text.get("1.0", tk.END).strip()
+        # Normal mode
+        difference_threshold = float(entries_thresholds["DIFFERENCE_THRESHOLD"].get())
+        if difference_threshold < 0:
+            raise ValueError("Difference Threshold cannot be negative.")
 
-            # If user left out the semicolon, add it
-            if not query_suffix.endswith(";"):
-                query_suffix += ";"
+        circularity_threshold = float(entries_thresholds["CIRCULARITY_THRESHOLD"].get())
+        if not (0.0 <= circularity_threshold <= 1.0):
+            raise ValueError("Circularity Threshold must be between 0.0 and 1.0.")
 
-            # Build final query: "SELECT * FROM results WHERE <user_text>"
-            # They may have an ORDER BY, etc. all in <user_text>
-            final_query = "SELECT * FROM results WHERE " + query_suffix
+        uniformity_threshold = float(entries_thresholds["UNIFORMITY_THRESHOLD"].get())
+        if not (0.0 <= uniformity_threshold <= 1.0):
+            raise ValueError("Uniformity Threshold must be between 0.0 and 1.0.")
 
-            conn = sqlite3.connect(DATABASE_PATH)
-            c = conn.cursor()
-            c.execute(final_query)
-            rows = c.fetchall()
-            conn.close()
-        else:
-            # Normal mode
-            difference_threshold = float(entries_thresholds["DIFFERENCE_THRESHOLD"].get())
-            if difference_threshold < 0:
-                raise ValueError("Difference Threshold cannot be negative.")
+        max_width_threshold = int(entries_thresholds["MAX_WIDTH"].get())
+        if not (1 <= max_width_threshold <= 8):
+            raise ValueError("Max Width must be between 1 and 8.")
 
-            circularity_threshold = float(entries_thresholds["CIRCULARITY_THRESHOLD"].get())
-            if not (0.0 <= circularity_threshold <= 1.0):
-                raise ValueError("Circularity Threshold must be between 0.0 and 1.0.")
+        min_radius = float(entries_radius["MIN_RADIUS"].get())
+        max_radius = float(entries_radius["MAX_RADIUS"].get())
+        if min_radius < 0 or min_radius > 200:
+            raise ValueError("Min Radius must be between 0 and 200.")
+        if max_radius < 0 or max_radius > 200:
+            raise ValueError("Max Radius must be between 0 and 200.")
+        if min_radius > max_radius:
+            raise ValueError("Min Radius cannot be greater than Max Radius.")
 
-            uniformity_threshold = float(entries_thresholds["UNIFORMITY_THRESHOLD"].get())
-            if not (0.0 <= uniformity_threshold <= 1.0):
-                raise ValueError("Uniformity Threshold must be between 0.0 and 1.0.")
+        min_diameter = int(entries_diameter["MIN_DIAMETER"].get())
+        max_diameter = int(entries_diameter["MAX_DIAMETER"].get())
+        if not (1 <= min_diameter <= 400):
+            raise ValueError("Min Diameter must be between 1 and 400.")
+        if not (1 <= max_diameter <= 400):
+            raise ValueError("Max Diameter must be between 1 and 400.")
+        if min_diameter > max_diameter:
+            raise ValueError("Min Diameter cannot be greater than Max Diameter.")
 
-            max_width_threshold = int(entries_thresholds["MAX_WIDTH"].get())
-            if not (1 <= max_width_threshold <= 8):
-                raise ValueError("Max Width must be between 1 and 8.")
+        odd_center_val = odd_center_var.get()  # "Odd", "Even", or "Both"
 
-            min_radius = float(entries_radius["MIN_RADIUS"].get())
-            max_radius = float(entries_radius["MAX_RADIUS"].get())
-            if min_radius < 0 or min_radius > 200:
-                raise ValueError("Min Radius must be between 0 and 200.")
-            if max_radius < 0 or max_radius > 200:
-                raise ValueError("Max Radius must be between 0 and 200.")
-            if min_radius > max_radius:
-                raise ValueError("Min Radius cannot be greater than Max Radius.")
-
-            min_diameter = int(entries_diameter["MIN_DIAMETER"].get())
-            max_diameter = int(entries_diameter["MAX_DIAMETER"].get())
-            if not (1 <= min_diameter <= 400):
-                raise ValueError("Min Diameter must be between 1 and 400.")
-            if not (1 <= max_diameter <= 400):
-                raise ValueError("Max Diameter must be between 1 and 400.")
-            if min_diameter > max_diameter:
-                raise ValueError("Min Diameter cannot be greater than Max Diameter.")
-
-            odd_center_val = 1 if odd_center_var.get() else 0
-            rows = load_results_from_db(difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
-                                        odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
+        rows = load_results_from_db(difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
+                                    odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
 
     except ValueError as ve:
         messagebox.showerror("Invalid Input", str(ve))
@@ -439,30 +433,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
         tree.selection_set(first_id)
         tree.focus(first_id)
         # Force on_row_selected to parse/plot the first row
-        on_row_selected(None, tree, canvas_frame, 1 if odd_center_var.get() else 0, 
-                        0, 0, 0)  # dummy last args
-
-def toggle_query_mode(custom_query_var, 
-                      normal_mode_frames,  # list of frames to hide in custom mode
-                      custom_query_frame,
-                      buttons_frame):
-    """
-    When the "Use Custom Query" checkbox is toggled:
-    - If True, hide normal frames and show custom query frame to the left of buttons_frame
-    - If False, show normal frames and hide custom query frame
-    """
-    if custom_query_var.get():
-        # Hide normal mode frames
-        for frm in normal_mode_frames:
-            frm.pack_forget()
-        # Show custom query frame before buttons_frame
-        custom_query_frame.pack(side=tk.LEFT, before=buttons_frame, fill=tk.BOTH, expand=True, padx=5, pady=5)
-    else:
-        # Hide custom query frame
-        custom_query_frame.pack_forget()
-        # Show normal mode frames
-        for frm in normal_mode_frames:
-            frm.pack(side=tk.LEFT, before=buttons_frame, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        on_row_selected(None, tree, canvas_frame, odd_center_val, difference_threshold, min_radius, max_radius)
 
 def main():
     global root
@@ -563,37 +534,22 @@ def main():
     spin_max_diameter.set(str(DEFAULT_CONFIG["MAX_DIAMETER"]))
     entries_diameter["MAX_DIAMETER"] = spin_max_diameter
 
-    # Odd Center Checkbox (Moved from Options Frame to Diameter Range Frame)
-    odd_center_var = tk.BooleanVar(value=DEFAULT_CONFIG["ODD_CENTER"])
-    odd_center_chk = ttk.Checkbutton(diameter_frame, text="Odd Center", variable=odd_center_var)
-    odd_center_chk.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W)
+    # Odd Center Selection
+    label_odd_center = ttk.Label(diameter_frame, text="Odd Center:")
+    label_odd_center.grid(row=2, column=0, padx=5, pady=5, sticky=tk.E)
+    odd_center_var = tk.StringVar(value=DEFAULT_CONFIG["ODD_CENTER"])
+    combo_odd_center = ttk.Combobox(diameter_frame, textvariable=odd_center_var, state="readonly",
+                                    values=["Both", "Odd", "Even"], width=11)
+    combo_odd_center.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
-    # --- Custom Query Mode UI (Initially Hidden) ---
-    custom_query_var = tk.BooleanVar(value=False)
-    custom_query_chk = ttk.Checkbutton(buttons_frame, text="Use Custom Query",
-                                       variable=custom_query_var,
-                                       command=lambda: toggle_query_mode(custom_query_var,
-                                                                         normal_mode_frames,
-                                                                         custom_query_frame,
-                                                                         buttons_frame))
-    custom_query_chk.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-    custom_query_frame = ttk.LabelFrame(input_frame, text="SQL Query (after 'SELECT * FROM results WHERE')")
-    # We'll create a scrolled text for multi-line conditions
-    custom_query_text = scrolledtext.ScrolledText(custom_query_frame, width=40, height=6)
-    custom_query_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-    # By default, this frame is not packed. It's only shown when custom_query_var is True.
-
-    # Load (or Run Query) Button
+    # --- Load / Run Query Button ---
     load_button = ttk.Button(buttons_frame, text="Load / Run Query",
                              command=lambda: on_load_click(odd_center_var,
                                                            entries_thresholds,
                                                            entries_radius,
                                                            entries_diameter,
                                                            tree,
-                                                           canvas_frame,
-                                                           custom_query_var,
-                                                           custom_query_text))
+                                                           canvas_frame))
     load_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
     # Define Treeview Columns (match the DB exactly excluding the grid_points column)
@@ -651,7 +607,7 @@ def main():
         event,
         tree,
         canvas_frame,
-        1 if odd_center_var.get() else 0,
+        odd_center_var.get(),
         float(entries_thresholds["DIFFERENCE_THRESHOLD"].get() or 0),
         float(entries_radius["MIN_RADIUS"].get() or 0),
         float(entries_radius["MAX_RADIUS"].get() or 0)
