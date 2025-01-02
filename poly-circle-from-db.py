@@ -19,12 +19,12 @@ matplotlib.use("TkAgg")
 # Default Configuration Constants
 DEFAULT_CONFIG = {
     "DIFFERENCE_THRESHOLD": 0.5,
+    "CIRCULARITY_THRESHOLD": 0.0,
     "ODD_CENTER": False,
     "MIN_RADIUS": 1.0,
     "MAX_RADIUS": 200.0,
     "MIN_DIAMETER": 1,
-    "MAX_DIAMETER": 400,
-    "CIRCULARITY_THRESHOLD": 0.0
+    "MAX_DIAMETER": 400
 }
 
 overlay_lines = []
@@ -111,7 +111,7 @@ def toggle_overlay(canvas):
         artist.set_visible(overlay_visible)
     canvas.draw()
 
-def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points):
+def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, uniformity, grid_points):
     if odd_center == 1:
         center_x, center_y = 0.5, 0.5
     else:
@@ -155,13 +155,14 @@ def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_wid
         f"Max Difference: {max_diff:.4f}\n"
         f"Diameter: {diameter}\n"
         f"Circularity: {circularity:.4f}\n"
-        f"Max Width: {max_width}"
+        f"Max Width: {max_width}\n"
+        f"Uniformity: {uniformity:.4f}"
     )
     ax.text(0.02, 0.98, config_text, transform=ax.transAxes, fontsize=8,
             verticalalignment='top', color="black",
             bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
 
-    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter}, Circularity = {circularity:.4f}, Max Width = {max_width})")
+    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter}, Circularity = {circularity:.4f}, Max Width = {max_width}, Uniformity = {uniformity:.4f})")
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
 
@@ -175,8 +176,8 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     if not data_tuple:
         return
 
-    # The DB row returns the columns in the order: (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center)
-    tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_str, db_odd_center = data_tuple
+    # The DB row returns the columns in the order: (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center, uniformity)
+    tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_str, db_odd_center, uniformity = data_tuple
 
     # Reconstruct the polygon from grid_points text
     points_str = grid_str.strip()
@@ -213,6 +214,7 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
         max_width=max_width,
         diameter=diameter,
         circularity=circularity,
+        uniformity=uniformity,
         grid_points=polygon
     )
     if fig is None:
@@ -260,7 +262,7 @@ def sort_treeview(tree, col, reverse, sort_order):
         tree.move(k, '', index)
 
     sort_order[col] = not reverse
-    tree.heading(col, command=lambda: sort_treeview(tree, col, sort_order[col], sort_order))
+    tree.heading(col, text=tree.heading(col)['text'], command=lambda: sort_treeview(tree, col, sort_order[col], sort_order))
 
 def export_to_csv(valid_data, tree):
     if not valid_data:
@@ -273,9 +275,10 @@ def export_to_csv(valid_data, tree):
             "sides": [f"{r[1]}" for r in valid_data],
             "real_radius": [f"{r[2]:.4f}" for r in valid_data],
             "max_diff": [f"{r[3]:.4f}" for r in valid_data],
-            "max_width": [f"{r[4]}" for r in valid_data],        # Added max_width
+            "max_width": [f"{r[4]}" for r in valid_data],
             "diameter": [f"{r[5]}" for r in valid_data],         # Diameter as integer
             "circularity": [f"{r[6]:.4f}" for r in valid_data],
+            "uniformity": [f"{r[9]:.4f}" for r in valid_data],
             "odd_center": ["Yes" if r[8] else "No" for r in valid_data]
         }
         df = pd.DataFrame(data)
@@ -299,7 +302,7 @@ def load_results_from_db(difference_threshold, circularity_threshold, odd_center
 
     # Construct normal filter
     c.execute("""SELECT tested_radius, sides, real_radius, max_diff, max_width, diameter, 
-                        circularity, grid_points, odd_center
+                        circularity, grid_points, odd_center, uniformity
                  FROM results
                  WHERE max_diff <= ?
                    AND circularity >= ?
@@ -313,7 +316,7 @@ def load_results_from_db(difference_threshold, circularity_threshold, odd_center
                min_radius, max_radius, min_diameter, max_diameter))
     rows = c.fetchall()
     conn.close()
-    return rows  # Each row has 9 columns
+    return rows  # Each row has 10 columns
 
 def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_diameter, 
                   tree, canvas_frame, custom_query_var, custom_query_text):
@@ -398,8 +401,8 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
     # Insert into the TreeView
     # columns = ("tested_radius", "sides", "real_radius", "max_diff", "max_width", "diameter", "circularity", "odd_center")
     for row in rows:
-        # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center)
-        tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val = row
+        # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center, uniformity)
+        tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val, uniformity = row
 
         # Insert into the tree
         # We'll show them in the exact order as columns, excluding grid_points
@@ -411,6 +414,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
             f"{max_width}",          # max_width
             f"{diameter}",           # diameter
             f"{circularity:.4f}",    # circularity
+            f"{uniformity:.4f}",     # uniformity
             "Yes" if oc_val else "No"  # odd_center as string
         )
         # Insert row
@@ -424,12 +428,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
         tree.focus(first_id)
         # Force on_row_selected to parse/plot the first row
         on_row_selected(None, tree, canvas_frame, 1 if odd_center_var.get() else 0, 
-                        float(entries_thresholds["DIFFERENCE_THRESHOLD"].get() or 0),
-                        float(entries_radius["MIN_RADIUS"].get() or 0),
-                        float(entries_radius["MAX_RADIUS"].get() or 0))  # dummy last args
-
-        odd_center_val = 1 if odd_center_var.get() else 0
-        on_row_selected(None, tree, canvas_frame, odd_center_val, 0, 0, 0)  # dummy last args
+                        0, 0, 0)  # dummy last args
 
 def toggle_query_mode(custom_query_var, 
                       normal_mode_frames,  # list of frames to hide in custom mode
@@ -571,7 +570,7 @@ def main():
     # Define Treeview Columns (match the DB exactly excluding the grid_points column)
     columns = (
         "tested_radius", "sides", "real_radius", "max_diff",
-        "max_width", "diameter", "circularity", "odd_center"
+        "max_width", "diameter", "circularity", "uniformity", "odd_center"
     )
 
     # Export Button
@@ -597,7 +596,7 @@ def main():
     tree = ttk.Treeview(table_frame, columns=columns, show='headings', selectmode='browse')
     for col in columns:
         tree.heading(col, text=col.replace("_", " ").title())
-        tree.column(col, anchor=tk.CENTER, width=75)  # Adjust width as needed
+        tree.column(col, anchor=tk.CENTER, width=80)
     scrollbar_vertical = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
     scrollbar_horizontal = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=tree.xview)  # Added horizontal scrollbar
     tree.configure(yscroll=scrollbar_vertical.set, xscroll=scrollbar_horizontal.set)
