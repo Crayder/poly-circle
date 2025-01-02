@@ -117,7 +117,7 @@ def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_wid
         center_x, center_y = 0.5, 0.5
     elif odd_center == "Even":
         center_x, center_y = 0.0, 0.0
-    else:  # Both
+    else:  # Both (for safety, though rows won't have "Both")
         center_x, center_y = 0.0, 0.0
 
     fig = plt.Figure(figsize=(8, 8))
@@ -165,13 +165,15 @@ def create_plot(odd_center, tested_radius, sides, real_radius, max_diff, max_wid
             verticalalignment='top', color="black",
             bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
 
-    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, Diameter = {diameter}, Circularity = {circularity:.4f}, Max Width = {max_width}, Uniformity = {uniformity:.4f})")
+    ax.set_title(f"Polygon (Sides = {sides}, Real Radius = {real_radius:.4f}, Max Diff = {max_diff:.4f}, "
+                 f"Diameter = {diameter}, Circularity = {circularity:.4f}, Max Width = {max_width}, "
+                 f"Uniformity = {uniformity:.4f})")
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
 
     return fig
 
-def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_threshold, min_radius, max_radius):
+def on_row_selected(event, tree, canvas_frame, difference_threshold, min_radius, max_radius):
     selected_item = tree.focus()
     if not selected_item:
         return
@@ -199,6 +201,12 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
                 continue
     polygon = tuple(points)
 
+    # Determine odd_center for plotting based on row's odd_center value
+    if db_odd_center == 1:
+        odd_center_for_plot = "Odd"
+    else:
+        odd_center_for_plot = "Even"
+
     for widget in canvas_frame.winfo_children():
         widget.destroy()
 
@@ -209,7 +217,7 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     plot_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
     fig = create_plot(
-        odd_center=db_odd_center,
+        odd_center=odd_center_for_plot,
         tested_radius=tested_radius,
         sides=sides,
         real_radius=real_radius,
@@ -233,7 +241,7 @@ def on_row_selected(event, tree, canvas_frame, odd_center_val, difference_thresh
     toolbar.pack(side=tk.TOP, fill=tk.X)
 
     # Create overlay based on odd_center
-    if db_odd_center == 1:
+    if odd_center_for_plot == "Odd":
         center_x, center_y = 0.5, 0.5
     else:
         center_x, center_y = 0.0, 0.0
@@ -433,7 +441,7 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
         tree.selection_set(first_id)
         tree.focus(first_id)
         # Force on_row_selected to parse/plot the first row
-        on_row_selected(None, tree, canvas_frame, odd_center_val, difference_threshold, min_radius, max_radius)
+        on_row_selected(None, tree, canvas_frame, difference_threshold, min_radius, max_radius)
 
 def main():
     global root
@@ -607,7 +615,6 @@ def main():
         event,
         tree,
         canvas_frame,
-        odd_center_var.get(),
         float(entries_thresholds["DIFFERENCE_THRESHOLD"].get() or 0),
         float(entries_radius["MIN_RADIUS"].get() or 0),
         float(entries_radius["MAX_RADIUS"].get() or 0)
