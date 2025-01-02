@@ -432,24 +432,25 @@ def on_load_click(odd_center_var, entries_thresholds, entries_radius, entries_di
 
 def toggle_query_mode(custom_query_var, 
                       normal_mode_frames,  # list of frames to hide in custom mode
-                      custom_query_frame):
+                      custom_query_frame,
+                      buttons_frame):
     """
     When the "Use Custom Query" checkbox is toggled:
-    - If True, hide normal frames and show custom query frame
+    - If True, hide normal frames and show custom query frame to the left of buttons_frame
     - If False, show normal frames and hide custom query frame
     """
     if custom_query_var.get():
         # Hide normal mode frames
         for frm in normal_mode_frames:
             frm.pack_forget()
-        # Show custom query frame
-        custom_query_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Show custom query frame before buttons_frame
+        custom_query_frame.pack(side=tk.LEFT, before=buttons_frame, fill=tk.BOTH, expand=True, padx=5, pady=5)
     else:
         # Hide custom query frame
         custom_query_frame.pack_forget()
         # Show normal mode frames
         for frm in normal_mode_frames:
-            frm.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+            frm.pack(side=tk.LEFT, before=buttons_frame, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
 def main():
     global root
@@ -546,7 +547,8 @@ def main():
                                        variable=custom_query_var,
                                        command=lambda: toggle_query_mode(custom_query_var,
                                                                          normal_mode_frames,
-                                                                         custom_query_frame))
+                                                                         custom_query_frame,
+                                                                         buttons_frame))
     custom_query_chk.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
     custom_query_frame = ttk.LabelFrame(input_frame, text="SQL Query (after 'SELECT * FROM results WHERE')")
