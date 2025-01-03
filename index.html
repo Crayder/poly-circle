@@ -131,6 +131,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Description and Help Section -->
+    <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+        <h2 class="text-xl font-bold mb-4">Description and Help</h2>
+        <p class="mb-4">
+            This web app lists and displays optimal circular polygons for Scrap Mechanic, allowing you to create
+            the best possible circles/curves in the game using the new wedge blocks. Every result is pre-calculated
+            ensuring they are possible in-game. The aim to be able to create circles as near-perfect to being round
+            as possible given the limitations of the game.
+        </p>
+        <ul class="list-disc list-inside mb-4 space-y-2">
+            <li><strong>Difference Threshold</strong> – The maximum allowed deviation of any vertex from the perfect circle’s boundary. Lower is stricter.</li>
+            <li><strong>Circularity Threshold</strong> – How close the shape is to being perfectly round (1.0 is a perfect circle).</li>
+            <li><strong>Uniformity Threshold</strong> – How similar each side’s length is. Higher means more evenly spaced sides.</li>
+            <li><strong>Max Width</strong> – The largest wedge size allowed. Scrap Mechanic wedges only go up to 8×8.</li>
+            <li><strong>Min/Max Radius</strong> – The smallest/largest radius to show. The radius is how far the outermost vertex is from the center.</li>
+            <li><strong>Min/Max Diameter</strong> – The overall width of the polygon (in blocks).</li>
+            <li><strong>Odd Center</strong> – “Odd” means the circles have odd width, “Even” means the circles have even width, “Both” ignores that filter.</li>
+        </ul>
+        <p class="mb-4">
+            <strong>Recommended Use Cases:</strong><br>
+            - If you want a giant wheel, aim for <em>higher Circularity</em> and <em>higher Uniformity</em> so it rolls nicely.<br>
+            - If you need a hollow center or a narrower shape, lower the <em>Max Width</em> to avoid large wedges.
+        </p>
+        <p class="mb-4">
+            For a Windows desktop application that does the same (no browser needed), you can download the executable here:
+            <a href="https://www.dropbox.com/scl/fi/icwbe2plc1q29xuaxbx77/poly-circle-from-db.exe?rlkey=ewuv9pj6ee3g2527vonwcok3t&st=zhk5ckar&dl=0"
+               class="text-blue-500 underline" target="_blank">poly-circle-from-db.exe</a>
+        </p>
+    </div>
     
     <!-- JavaScript Section -->
     <script>

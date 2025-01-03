@@ -1,7 +1,6 @@
 TODO:
 
-- Completely generate the new DB, since we added a new column. All radius 2-200.
-- Implement the uniformity value in the from-db version. When it reads and displays the data, include the uniformity value.
+-
 
 LATER TODO:
 
