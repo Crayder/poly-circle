@@ -96,7 +96,7 @@
         <div class="flex justify-between items-center mb-4">
             <button id="exportCSV" class="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600 text-sm">Export to CSV</button>
             <label class="inline-flex items-center text-sm">
-                <input type="checkbox" id="showOverlay" class="form-checkbox h-4 w-4 text-blue-600">
+                <input type="checkbox" id="showOverlay" class="form-checkbox h-4 w-4 text-blue-600" checked>
                 <span class="ml-2 text-gray-700">Show Overlay</span>
             </label>
         </div>
@@ -137,6 +137,22 @@
         // Initialize SQL.js
         let db;
         let sortOrder = {}; // Keep track of sort order for each column
+
+        // Plotly Configuration to Remove Specific Buttons and Hide Logo
+        const plotlyConfig = {
+            displayModeBar: true,
+            modeBarButtonsToRemove: [
+                'zoomIn2d',              // Zoom In
+                'zoomOut2d',             // Zoom Out
+                'toggleSpikelines',      // Spiked Lines Toggle
+                'hoverClosestCartesian', // Show Closest Data on Hover Toggle
+                'hoverCompareCartesian', // Compare Data on Hover Toggle
+                'lasso2d',               // Lasso Select
+                'select2d'               // Box Select
+            ],
+            displaylogo: false,          // Hide the "Produced with Plotly" logo
+            responsive: true
+        };
 
         // Load the SQL.js wasm file
         initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` }).then(SQL => {
@@ -385,7 +401,9 @@
                     showgrid: true,
                     gridwidth: 1,
                     gridcolor: '#e0e0e0',
-                    dtick: 1 // Grid lines every 1 unit
+                    dtick: 1, // Grid lines every 1 unit
+                    scaleanchor: 'y',
+                    scaleratio: 1
                 },
                 yaxis: { 
                     title: 'Y', 
@@ -394,21 +412,25 @@
                     showgrid: true,
                     gridwidth: 1,
                     gridcolor: '#e0e0e0',
-                    dtick: 1 // Grid lines every 1 unit
+                    dtick: 1, // Grid lines every 1 unit
+                    scaleanchor: 'x',
+                    scaleratio: 1
                 },
                 showlegend: false, // Hide the legend
                 width: 600,
                 height: 600,
                 autosize: false,
                 margin: { t: 20, r: 20, b: 40, l: 40 },
-                dragmode: false, // Disable drag mode to prevent zooming
+                dragmode: 'zoom', // Allow zooming
                 hovermode: false, // Disable hover interactions
                 aspectratio: { x: 1, y: 1 }, // Fixed aspect ratio
-                fixedrange: true // Disable zooming and panning
+                fixedrange: false // Allow zooming and panning
             };
 
             // Plot
-            Plotly.newPlot('plot', data, layout, {responsive: true});
+            Plotly.newPlot('plot', data, layout, plotlyConfig).then(function(gd) {
+                // No event listeners to enforce aspect ratio dynamically
+            });
         }
 
         // Function to generate overlay data
@@ -579,21 +601,17 @@
         // Handle Overlay Toggle
         document.getElementById('showOverlay').addEventListener('change', (event) => {
             const show = event.target.checked;
-            // Currently, overlays are part of the Plotly traces.
-            // To toggle overlays, we can show/hide the overlay traces.
-
-            // Get current plot data
+            // Overlays are part of the Plotly traces starting from index 2
             const plotData = document.getElementById('plot').data;
 
             if (!plotData) return;
 
-            // Overlay traces start from index 2 onwards
             const newData = plotData.map((trace, index) => {
-                if (index < 2) return trace; // Polygon and Circle
+                if (index < 2) return trace; // Polygon and Circle remain unchanged
                 return { ...trace, visible: show ? true : 'legendonly' };
             });
 
-            Plotly.react('plot', newData, document.getElementById('plot').layout);
+            Plotly.react('plot', newData, document.getElementById('plot').layout, plotlyConfig);
         });
 
         // Handle Column Sorting
@@ -741,7 +759,9 @@
                     showgrid: true,
                     gridwidth: 1,
                     gridcolor: '#e0e0e0',
-                    dtick: 1 // Grid lines every 1 unit
+                    dtick: 1, // Grid lines every 1 unit
+                    scaleanchor: 'y',
+                    scaleratio: 1
                 },
                 yaxis: { 
                     title: 'Y', 
@@ -750,21 +770,25 @@
                     showgrid: true,
                     gridwidth: 1,
                     gridcolor: '#e0e0e0',
-                    dtick: 1 // Grid lines every 1 unit
+                    dtick: 1, // Grid lines every 1 unit
+                    scaleanchor: 'x',
+                    scaleratio: 1
                 },
                 showlegend: false, // Hide the legend
                 width: 600,
                 height: 600,
                 autosize: false,
                 margin: { t: 20, r: 20, b: 40, l: 40 },
-                dragmode: false, // Disable drag mode to prevent zooming
+                dragmode: 'zoom', // Allow zooming
                 hovermode: false, // Disable hover interactions
                 aspectratio: { x: 1, y: 1 }, // Fixed aspect ratio
-                fixedrange: true // Disable zooming and panning
+                fixedrange: false // Allow zooming and panning
             };
 
             // Plot
-            Plotly.newPlot('plot', data, layout, {responsive: true});
+            Plotly.newPlot('plot', data, layout, plotlyConfig).then(function(gd) {
+                // No event listeners to enforce aspect ratio dynamically
+            });
         }
     </script>
 </body>
