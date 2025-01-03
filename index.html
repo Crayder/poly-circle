@@ -385,7 +385,7 @@
                 hoverinfo: 'none' // Disable hover info
             };
 
-            // Overlay Lines and Texts
+            // Overlay Lines and Annotations
             const overlayData = generateOverlayData(center_x, center_y, points);
 
             // Combine all traces
@@ -431,13 +431,20 @@
             Plotly.newPlot('plot', data, layout, plotlyConfig).then(function(gd) {
                 // No event listeners to enforce aspect ratio dynamically
             });
+
+            // Apply Annotations
+            // Annotations are added to the layout after Plotly.newPlot
+            if (overlayData.annotations && overlayData.annotations.length > 0) {
+                Plotly.relayout('plot', { annotations: overlayData.annotations });
+            }
         }
 
-        // Function to generate overlay data
+        // Function to generate overlay data with annotations
         function generateOverlayData(center_x, center_y, points) {
             const sortedPoints = sortPointsByAngle(center_x, center_y, points);
             const numPoints = sortedPoints.length;
             const overlayTraces = [];
+            const annotations = [];
 
             for (let i = 0; i < numPoints; i++) {
                 const A = sortedPoints[i];
@@ -465,17 +472,23 @@
                     const mx = (A.x + B.x) / 2;
                     const my = (A.y + B.y) / 2;
 
-                    // Add text annotation
-                    overlayTraces.push({
-                        x: [mx],
-                        y: [my],
-                        mode: 'text',
-                        type: 'scatter',
-                        text: [length.toString()],
-                        textposition: 'middle center',
-                        showlegend: false,
-                        textfont: { size: 10, color: 'black' },
-                        hoverinfo: 'none'
+                    // Add annotation with background
+                    annotations.push({
+                        x: mx,
+                        y: my,
+                        text: length.toString(),
+                        showarrow: false,
+                        font: {
+                            size: 10,
+                            color: 'black'
+                        },
+                        bgcolor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent white background
+                        bordercolor: 'black',
+                        borderwidth: 0.5,
+                        borderpad: 2,
+                        align: 'center',
+                        xanchor: 'center',
+                        yanchor: 'middle'
                     });
                 } else {
                     // Diagonal line, find C
@@ -527,33 +540,45 @@
                     const mBCx = (B.x + C.x) / 2;
                     const mBCy = (B.y + C.y) / 2;
 
-                    // Add text annotations
-                    overlayTraces.push({
-                        x: [mACx],
-                        y: [mACy],
-                        mode: 'text',
-                        type: 'scatter',
-                        text: [AC_length.toString()],
-                        textposition: 'middle center',
-                        showlegend: false,
-                        textfont: { size: 10, color: 'black' },
-                        hoverinfo: 'none'
+                    // Add annotations with background
+                    annotations.push({
+                        x: mACx,
+                        y: mACy,
+                        text: AC_length.toString(),
+                        showarrow: false,
+                        font: {
+                            size: 10,
+                            color: 'black'
+                        },
+                        bgcolor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent white background
+                        bordercolor: 'black',
+                        borderwidth: 0.5,
+                        borderpad: 2,
+                        align: 'center',
+                        xanchor: 'center',
+                        yanchor: 'middle'
                     });
-                    overlayTraces.push({
-                        x: [mBCx],
-                        y: [mBCy],
-                        mode: 'text',
-                        type: 'scatter',
-                        text: [BC_length.toString()],
-                        textposition: 'middle center',
-                        showlegend: false,
-                        textfont: { size: 10, color: 'black' },
-                        hoverinfo: 'none'
+                    annotations.push({
+                        x: mBCx,
+                        y: mBCy,
+                        text: BC_length.toString(),
+                        showarrow: false,
+                        font: {
+                            size: 10,
+                            color: 'black'
+                        },
+                        bgcolor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent white background
+                        bordercolor: 'black',
+                        borderwidth: 0.5,
+                        borderpad: 2,
+                        align: 'center',
+                        xanchor: 'center',
+                        yanchor: 'middle'
                     });
                 }
             }
 
-            return { traces: overlayTraces };
+            return { traces: overlayTraces, annotations: annotations };
         }
 
         // Utility function to sort points by angle
@@ -692,104 +717,6 @@
             });
         }
 
-        // Plotting Function
-        function plotRowData(row) {
-            // Parse grid_points
-            const gridPointsStr = row.grid_points; // Expected format: "(x1,y1),(x2,y2),..."
-            const points = gridPointsStr.match(/\(([^)]+)\)/g).map(pt => {
-                const [x, y] = pt.replace(/[()]/g, '').split(',').map(Number);
-                return { x, y };
-            });
-
-            // Extract X and Y coordinates
-            const xCoords = points.map(pt => pt.x);
-            const yCoords = points.map(pt => pt.y);
-
-            // Close the polygon by repeating the first point
-            xCoords.push(points[0].x);
-            yCoords.push(points[0].y);
-
-            // Determine plot center based on row's odd_center
-            let center_x = 0.0;
-            let center_y = 0.0;
-            if (row.odd_center === 1) {
-                center_x = 0.5;
-                center_y = 0.5;
-            }
-
-            // Create the plot data
-            const polygonTrace = {
-                x: xCoords,
-                y: yCoords,
-                mode: 'lines+markers',
-                type: 'scatter',
-                name: 'Polygon',
-                line: { color: 'black' },
-                marker: { color: 'orange' },
-                hoverinfo: 'none' // Disable hover info
-            };
-
-            const circleTheta = Array.from({ length: 500 }, (_, i) => i * 2 * Math.PI / 500);
-            const circleX = circleTheta.map(theta => center_x + row.tested_radius * Math.cos(theta));
-            const circleY = circleTheta.map(theta => center_y + row.tested_radius * Math.sin(theta));
-
-            const circleTrace = {
-                x: circleX,
-                y: circleY,
-                mode: 'lines',
-                type: 'scatter',
-                name: 'Tested Radius',
-                line: { color: 'blue' },
-                hoverinfo: 'none' // Disable hover info
-            };
-
-            // Overlay Lines and Texts
-            const overlayData = generateOverlayData(center_x, center_y, points);
-
-            // Combine all traces
-            const data = [polygonTrace, circleTrace, ...overlayData.traces];
-
-            // Define layout
-            const layout = {
-                // title: Removed to hide the title
-                xaxis: { 
-                    title: 'X', 
-                    range: [center_x - row.tested_radius - 1, center_x + row.tested_radius + 1], 
-                    zeroline: false,
-                    showgrid: true,
-                    gridwidth: 1,
-                    gridcolor: '#e0e0e0',
-                    dtick: 1, // Grid lines every 1 unit
-                    scaleanchor: 'y',
-                    scaleratio: 1
-                },
-                yaxis: { 
-                    title: 'Y', 
-                    range: [center_y - row.tested_radius - 1, center_y + row.tested_radius + 1], 
-                    zeroline: false,
-                    showgrid: true,
-                    gridwidth: 1,
-                    gridcolor: '#e0e0e0',
-                    dtick: 1, // Grid lines every 1 unit
-                    scaleanchor: 'x',
-                    scaleratio: 1
-                },
-                showlegend: false, // Hide the legend
-                width: 600,
-                height: 600,
-                autosize: false,
-                margin: { t: 20, r: 20, b: 40, l: 40 },
-                dragmode: 'zoom', // Allow zooming
-                hovermode: false, // Disable hover interactions
-                aspectratio: { x: 1, y: 1 }, // Fixed aspect ratio
-                fixedrange: false // Allow zooming and panning
-            };
-
-            // Plot
-            Plotly.newPlot('plot', data, layout, plotlyConfig).then(function(gd) {
-                // No event listeners to enforce aspect ratio dynamically
-            });
-        }
     </script>
 </body>
 </html>
