@@ -9,6 +9,23 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <!-- Plotly.js CDN -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* Optional: Customize scrollbar for better aesthetics */
+        /* Webkit-based browsers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
@@ -22,19 +39,19 @@
                     <h2 class="text-xl font-semibold mb-2">Thresholds</h2>
                     <div class="mb-4">
                         <label class="block text-gray-700">Difference Threshold:</label>
-                        <input type="number" step="0.01" id="differenceThreshold" class="w-full px-3 py-2 border rounded" value="0.5">
+                        <input type="number" step="0.01" id="differenceThreshold" class="w-full px-3 py-1 border rounded text-sm" value="0.5">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Circularity Threshold:</label>
-                        <input type="number" step="0.01" id="circularityThreshold" class="w-full px-3 py-2 border rounded" value="0.0">
+                        <input type="number" step="0.01" id="circularityThreshold" class="w-full px-3 py-1 border rounded text-sm" value="0.0">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Uniformity Threshold:</label>
-                        <input type="number" step="0.01" id="uniformityThreshold" class="w-full px-3 py-2 border rounded" value="0.0">
+                        <input type="number" step="0.01" id="uniformityThreshold" class="w-full px-3 py-1 border rounded text-sm" value="0.0">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Max Width:</label>
-                        <input type="number" id="maxWidth" class="w-full px-3 py-2 border rounded" value="8" min="1" max="8">
+                        <input type="number" id="maxWidth" class="w-full px-3 py-1 border rounded text-sm" value="8" min="1" max="8">
                     </div>
                 </div>
                 
@@ -43,11 +60,11 @@
                     <h2 class="text-xl font-semibold mb-2">Radius Range</h2>
                     <div class="mb-4">
                         <label class="block text-gray-700">Min Radius:</label>
-                        <input type="number" step="0.01" id="minRadius" class="w-full px-3 py-2 border rounded" value="1.0" min="0" max="200">
+                        <input type="number" step="0.01" id="minRadius" class="w-full px-3 py-1 border rounded text-sm" value="1.0" min="0" max="200">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Max Radius:</label>
-                        <input type="number" step="0.01" id="maxRadius" class="w-full px-3 py-2 border rounded" value="200.0" min="0" max="200">
+                        <input type="number" step="0.01" id="maxRadius" class="w-full px-3 py-1 border rounded text-sm" value="200.0" min="0" max="200">
                     </div>
                 </div>
                 
@@ -56,15 +73,15 @@
                     <h2 class="text-xl font-semibold mb-2">Diameter Range</h2>
                     <div class="mb-4">
                         <label class="block text-gray-700">Min Diameter:</label>
-                        <input type="number" id="minDiameter" class="w-full px-3 py-2 border rounded" value="1" min="1" max="400">
+                        <input type="number" id="minDiameter" class="w-full px-3 py-1 border rounded text-sm" value="1" min="1" max="400">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Max Diameter:</label>
-                        <input type="number" id="maxDiameter" class="w-full px-3 py-2 border rounded" value="400" min="1" max="400">
+                        <input type="number" id="maxDiameter" class="w-full px-3 py-1 border rounded text-sm" value="400" min="1" max="400">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Odd Center:</label>
-                        <select id="oddCenter" class="w-full px-3 py-2 border rounded">
+                        <select id="oddCenter" class="w-full px-3 py-1 border rounded text-sm">
                             <option value="Both" selected>Both</option>
                             <option value="Odd">Odd</option>
                             <option value="Even">Even</option>
@@ -72,14 +89,14 @@
                     </div>
                 </div>
             </div>
-            <button id="loadQuery" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Load / Run Query</button>
+            <button id="loadQuery" class="mt-4 bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 text-sm">Load / Run Query</button>
         </div>
         
         <!-- Export and Overlay Controls -->
         <div class="flex justify-between items-center mb-4">
-            <button id="exportCSV" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Export to CSV</button>
-            <label class="inline-flex items-center">
-                <input type="checkbox" id="showOverlay" class="form-checkbox h-5 w-5 text-blue-600">
+            <button id="exportCSV" class="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600 text-sm">Export to CSV</button>
+            <label class="inline-flex items-center text-sm">
+                <input type="checkbox" id="showOverlay" class="form-checkbox h-4 w-4 text-blue-600">
                 <span class="ml-2 text-gray-700">Show Overlay</span>
             </label>
         </div>
@@ -87,19 +104,19 @@
         <!-- Data Table and Plot Section -->
         <div class="flex flex-col md:flex-row gap-6">
             <!-- Data Table -->
-            <div class="bg-white p-4 rounded-lg shadow-md w-full md:w-1/2 overflow-auto">
-                <table class="min-w-full table-auto" id="resultsTable">
+            <div class="bg-white p-4 rounded-lg shadow-md w-full md:w-1/2 overflow-auto custom-scrollbar" style="max-height: 600px;">
+                <table class="min-w-full table-auto text-sm" id="resultsTable">
                     <thead>
                         <tr>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="tested_radius">Tested Radius</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="sides">Sides</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="real_radius">Real Radius</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="max_diff">Max Diff</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="max_width">Max Width</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="diameter">Diameter</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="circularity">Circularity</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="uniformity">Uniformity</th>
-                            <th class="px-4 py-2 border cursor-pointer" data-column="odd_center">Odd Center</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="tested_radius">Tested Radius</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="sides">Sides</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="real_radius">Real Radius</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="max_diff">Max Diff</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="max_width">Max Width</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="diameter">Diameter</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="circularity">Circularity</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="uniformity">Uniformity</th>
+                            <th class="px-4 py-2 border cursor-pointer relative" data-column="odd_center">Odd Center</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -171,7 +188,7 @@
                 alert('Circularity Threshold must be between 0.0 and 1.0.');
                 return;
             }
-            if (uniformityThreshold < 0 || uniformityThreshold > 1) {
+            if (uniformityThreshold < 0 || uniformityThreshold > 1.0) {
                 alert('Uniformity Threshold must be between 0.0 and 1.0.');
                 return;
             }
@@ -253,18 +270,18 @@
                     results.push(row);
 
                     const tr = document.createElement('tr');
-                    tr.classList.add('hover:bg-gray-100', 'cursor-pointer');
+                    tr.classList.add('hover:bg-gray-100', 'cursor-pointer', 'h-6'); // Reduced height with h-6
 
                     tr.innerHTML = `
-                        <td class="px-4 py-2 border">${escapeHTML(row.tested_radius.toFixed(4))}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.sides.toString())}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.real_radius.toFixed(4))}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.max_diff.toFixed(4))}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.max_width.toString())}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.diameter.toString())}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.circularity.toFixed(4))}</td>
-                        <td class="px-4 py-2 border">${escapeHTML(row.uniformity.toFixed(4))}</td>
-                        <td class="px-4 py-2 border">${row.odd_center ? 'Yes' : 'No'}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.tested_radius.toFixed(4))}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.sides.toString())}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.real_radius.toFixed(4))}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.max_diff.toFixed(4))}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.max_width.toString())}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.diameter.toString())}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.circularity.toFixed(4))}</td>
+                        <td class="px-2 py-1 border">${escapeHTML(row.uniformity.toFixed(4))}</td>
+                        <td class="px-2 py-1 border">${row.odd_center ? 'Yes' : 'No'}</td>
                     `;
 
                     // Store the entire row data in a data attribute for easy access
@@ -334,7 +351,8 @@
                 type: 'scatter',
                 name: 'Polygon',
                 line: { color: 'black' },
-                marker: { color: 'orange' }
+                marker: { color: 'orange' },
+                hoverinfo: 'none' // Disable hover info
             };
 
             const circleTheta = Array.from({ length: 500 }, (_, i) => i * 2 * Math.PI / 500);
@@ -347,7 +365,8 @@
                 mode: 'lines',
                 type: 'scatter',
                 name: 'Tested Radius',
-                line: { color: 'blue' }
+                line: { color: 'blue' },
+                hoverinfo: 'none' // Disable hover info
             };
 
             // Overlay Lines and Texts
@@ -358,16 +377,38 @@
 
             // Define layout
             const layout = {
-                title: `Polygon (Sides = ${row.sides}, Real Radius = ${row.real_radius.toFixed(4)}, Max Diff = ${row.max_diff.toFixed(4)}, Diameter = ${row.diameter}, Circularity = ${row.circularity.toFixed(4)}, Max Width = ${row.max_width}, Uniformity = ${row.uniformity.toFixed(4)})`,
-                xaxis: { title: 'X', range: [center_x - row.tested_radius - 1, center_x + row.tested_radius + 1], zeroline: false },
-                yaxis: { title: 'Y', range: [center_y - row.tested_radius - 1, center_y + row.tested_radius + 1], zeroline: false },
-                showlegend: true,
+                // title: Removed to hide the title
+                xaxis: { 
+                    title: 'X', 
+                    range: [center_x - row.tested_radius - 1, center_x + row.tested_radius + 1], 
+                    zeroline: false,
+                    showgrid: true,
+                    gridwidth: 1,
+                    gridcolor: '#e0e0e0',
+                    dtick: 1 // Grid lines every 1 unit
+                },
+                yaxis: { 
+                    title: 'Y', 
+                    range: [center_y - row.tested_radius - 1, center_y + row.tested_radius + 1], 
+                    zeroline: false,
+                    showgrid: true,
+                    gridwidth: 1,
+                    gridcolor: '#e0e0e0',
+                    dtick: 1 // Grid lines every 1 unit
+                },
+                showlegend: false, // Hide the legend
                 width: 600,
-                height: 600
+                height: 600,
+                autosize: false,
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                dragmode: false, // Disable drag mode to prevent zooming
+                hovermode: false, // Disable hover interactions
+                aspectratio: { x: 1, y: 1 }, // Fixed aspect ratio
+                fixedrange: true // Disable zooming and panning
             };
 
             // Plot
-            Plotly.newPlot('plot', data, layout);
+            Plotly.newPlot('plot', data, layout, {responsive: true});
         }
 
         // Function to generate overlay data
@@ -390,8 +431,9 @@
                         y: [A.y, B.y],
                         mode: 'lines',
                         type: 'scatter',
-                        line: { color: 'black', dash: 'solid' },
-                        showlegend: false
+                        line: { color: 'black', dash: 'solid' }, // Ensure solid lines
+                        showlegend: false,
+                        hoverinfo: 'none'
                     });
 
                     // Calculate length
@@ -428,8 +470,9 @@
                         y: [A.y, B.y],
                         mode: 'lines',
                         type: 'scatter',
-                        line: { color: 'black', dash: 'solid' },
-                        showlegend: false
+                        line: { color: 'black', dash: 'solid' }, // Ensure solid lines
+                        showlegend: false,
+                        hoverinfo: 'none'
                     });
 
                     // Lines AC and BC
@@ -438,16 +481,18 @@
                         y: [A.y, C.y],
                         mode: 'lines',
                         type: 'scatter',
-                        line: { color: 'red', dash: 'dash' },
-                        showlegend: false
+                        line: { color: 'red', dash: 'solid' }, // Changed to solid
+                        showlegend: false,
+                        hoverinfo: 'none'
                     });
                     overlayTraces.push({
                         x: [B.x, C.x],
                         y: [B.y, C.y],
                         mode: 'lines',
                         type: 'scatter',
-                        line: { color: 'red', dash: 'dash' },
-                        showlegend: false
+                        line: { color: 'red', dash: 'solid' }, // Changed to solid
+                        showlegend: false,
+                        hoverinfo: 'none'
                     });
 
                     // Calculate lengths
@@ -610,20 +655,20 @@
         function updateSortIndicators() {
             tableHeaders.forEach(header => {
                 const column = header.getAttribute('data-column');
-                const indicator = header.querySelector('.sort-indicator');
-                if (indicator) {
-                    header.removeChild(indicator);
+                const existingIndicator = header.querySelector('.sort-indicator');
+                if (existingIndicator) {
+                    header.removeChild(existingIndicator);
                 }
 
                 if (sortOrder[column] === 'asc') {
                     const arrow = document.createElement('span');
-                    arrow.classList.add('sort-indicator');
-                    arrow.innerHTML = ' ▲';
+                    arrow.classList.add('sort-indicator', 'absolute', 'right-2', 'top-1/2', '-translate-y-1/2');
+                    arrow.innerHTML = '▲';
                     header.appendChild(arrow);
                 } else if (sortOrder[column] === 'desc') {
                     const arrow = document.createElement('span');
-                    arrow.classList.add('sort-indicator');
-                    arrow.innerHTML = ' ▼';
+                    arrow.classList.add('sort-indicator', 'absolute', 'right-2', 'top-1/2', '-translate-y-1/2');
+                    arrow.innerHTML = '▼';
                     header.appendChild(arrow);
                 }
             });
@@ -662,7 +707,8 @@
                 type: 'scatter',
                 name: 'Polygon',
                 line: { color: 'black' },
-                marker: { color: 'orange' }
+                marker: { color: 'orange' },
+                hoverinfo: 'none' // Disable hover info
             };
 
             const circleTheta = Array.from({ length: 500 }, (_, i) => i * 2 * Math.PI / 500);
@@ -675,7 +721,8 @@
                 mode: 'lines',
                 type: 'scatter',
                 name: 'Tested Radius',
-                line: { color: 'blue' }
+                line: { color: 'blue' },
+                hoverinfo: 'none' // Disable hover info
             };
 
             // Overlay Lines and Texts
@@ -686,16 +733,38 @@
 
             // Define layout
             const layout = {
-                title: `Polygon (Sides = ${row.sides}, Real Radius = ${row.real_radius.toFixed(4)}, Max Diff = ${row.max_diff.toFixed(4)}, Diameter = ${row.diameter}, Circularity = ${row.circularity.toFixed(4)}, Max Width = ${row.max_width}, Uniformity = ${row.uniformity.toFixed(4)})`,
-                xaxis: { title: 'X', range: [center_x - row.tested_radius - 1, center_x + row.tested_radius + 1], zeroline: false },
-                yaxis: { title: 'Y', range: [center_y - row.tested_radius - 1, center_y + row.tested_radius + 1], zeroline: false },
-                showlegend: true,
+                // title: Removed to hide the title
+                xaxis: { 
+                    title: 'X', 
+                    range: [center_x - row.tested_radius - 1, center_x + row.tested_radius + 1], 
+                    zeroline: false,
+                    showgrid: true,
+                    gridwidth: 1,
+                    gridcolor: '#e0e0e0',
+                    dtick: 1 // Grid lines every 1 unit
+                },
+                yaxis: { 
+                    title: 'Y', 
+                    range: [center_y - row.tested_radius - 1, center_y + row.tested_radius + 1], 
+                    zeroline: false,
+                    showgrid: true,
+                    gridwidth: 1,
+                    gridcolor: '#e0e0e0',
+                    dtick: 1 // Grid lines every 1 unit
+                },
+                showlegend: false, // Hide the legend
                 width: 600,
-                height: 600
+                height: 600,
+                autosize: false,
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                dragmode: false, // Disable drag mode to prevent zooming
+                hovermode: false, // Disable hover interactions
+                aspectratio: { x: 1, y: 1 }, // Fixed aspect ratio
+                fixedrange: true // Disable zooming and panning
             };
 
             // Plot
-            Plotly.newPlot('plot', data, layout);
+            Plotly.newPlot('plot', data, layout, {responsive: true});
         }
     </script>
 </body>
