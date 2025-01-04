@@ -16,3 +16,5 @@ as possible given the limitations of the game.
 Recommended Use Cases:
 - If you want a giant wheel, aim for *higher Circularity* and *higher Uniformity* so it rolls nicely.
 - If you need a hollow center or a narrower shape, lower the *Max Width* to avoid large wedges.
+
+View the web version here: https://crayder.github.io/poly-circle/
