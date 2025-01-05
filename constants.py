@@ -49,3 +49,52 @@ SM_BLOCK_INFO = {
     "challenge02":     {"block_id": "cad3a585-2686-40e2-8eb1-02f5df20a021", "wedge_id": "ba648739-e77a-4f7a-b998-143d2882959f", "color": "303235"},
     "challengeglass":  {"block_id": "17baf3ba-0b40-4eef-9823-119059d5c12d", "wedge_id": "de8a39e1-f5b1-43fb-9594-544b894c3cb6", "color": "E4F8FF"},
 }
+
+'''
+Wedge vs Block Rotation and Positioning:
+
+```markdown
+- Most importantly, all wedges' origins are positioned based on their inside corner (the 90 angle).
+- Wedges facing top-left have `"xaxis": -3, "zaxis": 2` for rotation. Origin is bottom-right.
+- Wedges facing top-right have `"xaxis": 3, "zaxis": 2` for rotation. Origin is bottom-left.
+- Wedges facing bottom-right have `"xaxis": -3, "zaxis": -2` for rotation. Origin is top-left.
+- Wedges facing bottom-left have `"xaxis": 3, "zaxis": -2` for rotation. Origin is top-right.
+- Blocks always have `"xaxis": 1, "zaxis": 3` for rotation. Origin is bottom-left.
+```
+'''
+
+# Transform info for each block/wedge type
+SM_TRANSFORM_INFO = {
+    "block": {
+        "origin": { "x": 0, "y": 0, "z": 0 },
+        "rotation": {"xaxis": 1, "zaxis": 3}
+    },
+    "wedge-top-left": {
+        "origin": { "x": 0, "y": 1, "z": 2 },
+        "rotation": {"xaxis": -3, "zaxis": 2}
+    },
+    "wedge-top-right": {
+        "origin": { "x": 1, "y": 1, "z": 2 },
+        "rotation": {"xaxis": 3, "zaxis": 2}
+    },
+    "wedge-bottom-right": {
+        "origin": { "x": 1, "y": 0, "z": -2 },
+        "rotation": {"xaxis": -3, "zaxis": -2}
+    },
+    "wedge-bottom-left": {
+        "origin": { "x": 0, "y": 0, "z": -2 },
+        "rotation": {"xaxis": 3, "zaxis": -2}
+    }
+}
+
+# Blueprint data for instantiating a new body (not really needed, just keeping here for reference)
+'''
+SM_BLUEPRINT_BODY_CHILD = {
+    "bounds": { "x": 1, "y": 1, "z": 1 },
+    "color": "FFFFFF",
+    "pos": { "x": 0, "y": 0, "z": 0 },
+    "shapeId": "628b2d61-5ceb-43e9-8334-a4135566df7a",
+    "xaxis": 1,
+    "zaxis": 3
+}
+'''
