@@ -1,5 +1,3 @@
-# gui.py
-
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -361,6 +359,10 @@ def fetch_and_display(difference_threshold, circularity_threshold, uniformity_th
     rows = database.load_results_from_db(difference_threshold, circularity_threshold, uniformity_threshold, max_width_threshold,
                                         odd_center_val, min_radius, max_radius, min_diameter, max_diameter)
 
+    # Schedule the insertion of rows in the main thread
+    tree.after(0, insert_rows, tree, rows, canvas_frame)
+
+def insert_rows(tree, rows, canvas_frame):
     # Clear the tree
     tree.delete(*tree.get_children())
     tree.item_data.clear()
