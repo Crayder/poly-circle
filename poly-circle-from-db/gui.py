@@ -3,10 +3,13 @@ from tkinter import ttk
 from tkinter import messagebox
 import math
 import threading
-from constants import DEFAULT_CONFIG
+from constants import DEFAULT_CONFIG, SM_BLOCK_INFO
 import database
 import plot
+import poly
+import blueprint
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from PIL import ImageTk, Image
 
 def on_row_selected(event, tree, canvas_frame, difference_threshold, min_radius, max_radius):
     selected_item = tree.focus()
@@ -42,6 +45,15 @@ def on_row_selected(event, tree, canvas_frame, difference_threshold, min_radius,
     else:
         odd_center_for_plot = "Even"
 
+    # Calculate center based on odd_center
+    if odd_center_for_plot == "Odd":
+        center_x, center_y = 0.5, 0.5
+    else:
+        center_x, center_y = 0.0, 0.0
+
+    # Convert polygon to rects and wedges
+    rects, wedges = poly.convert_polygon_to_blueprint(polygon, center_x, center_y)
+
     for widget in canvas_frame.winfo_children():
         widget.destroy()
 
@@ -76,19 +88,17 @@ def on_row_selected(event, tree, canvas_frame, difference_threshold, min_radius,
     toolbar.pack(side=tk.TOP, fill=tk.X)
 
     # Create overlay based on odd_center
-    if odd_center_for_plot == "Odd":
-        center_x, center_y = 0.5, 0.5
-    else:
-        center_x, center_y = 0.0, 0.0
     plot.create_overlay(ax, center_x, center_y, polygon)
 
     # Set overlay visibility based on checkbox state
     visible = tree.overlay_var.get()
     plot.set_overlay_visibility(ax, canvas, visible)
 
-    # Store current Axes and Canvas for overlay toggle
+    # Store current Axes, Canvas, rects, and wedges for export
     tree.current_ax = ax
     tree.current_canvas = canvas
+    tree.current_rects = rects
+    tree.current_wedges = wedges
 
 def sort_treeview(tree, col, reverse, sort_order):
     l = [(tree.set(k, col), k) for k in tree.get_children('')]
@@ -244,6 +254,13 @@ def create_gui():
                                     ))
     overlay_check.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
+    # --- Export Blueprint Button ---
+    export_button = ttk.Button(buttons_frame, text="Export Blueprint",
+                               command=lambda: on_export_click(
+                                   tree
+                               ))
+    export_button.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
     # Bottom Frame for Treeview and Plot
     bottom_frame = ttk.Frame(root)
     bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -267,6 +284,8 @@ def create_gui():
     tree.item_data = {}
     tree.current_ax = None
     tree.current_canvas = None
+    tree.current_rects = []
+    tree.current_wedges = []
     tree.overlay_var = overlay_var  # Assign the overlay_var to tree for easy access
 
     # Plot Frame
@@ -374,11 +393,11 @@ def insert_rows(tree, rows, canvas_frame):
         return
 
     # Sort by sides ascending (column index 1 is sides)
-    rows = sorted(rows, key=lambda x: x[1])  # x[1] = sides
+    sorted_rows = sorted(rows, key=lambda x: x[1])  # x[1] = sides
 
     # Insert into the TreeView
     # columns = ("tested_radius", "sides", "real_radius", "max_diff", "max_width", "diameter", "circularity", "uniformity", "odd_center")
-    for row in rows:
+    for row in sorted_rows:
         # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center, uniformity)
         tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val, uniformity = row
 
@@ -407,10 +426,69 @@ def insert_rows(tree, rows, canvas_frame):
         # Force on_row_selected to parse/plot the first row
         tree.event_generate("<<TreeviewSelect>>")
 
-def on_overlay_toggle(tree, visible):
-    if tree.current_ax and tree.current_canvas:
-        plot.set_overlay_visibility(tree.current_ax, tree.current_canvas, visible)
+def on_export_click(tree):
+    """
+    Handles the Export Blueprint button click.
+    """
+    selected_item = tree.focus()
+    if not selected_item:
+        messagebox.showerror("No Selection", "Please select a polygon to export.")
+        return
 
-def export_to_csv(valid_data, tree):
-    # Functionality removed as per user instructions
-    pass
+    data_tuple = tree.item_data.get(selected_item)
+    if not data_tuple:
+        messagebox.showerror("Error", "Selected item data is unavailable.")
+        return
+
+    # Ensure that rects and wedges are available
+    rects = getattr(tree, 'current_rects', [])
+    wedges = getattr(tree, 'current_wedges', [])
+    if not rects or not wedges:
+        messagebox.showerror("Error", "Rectangle and Wedge data are unavailable for the selected polygon.")
+        return
+
+    # Create a new top-level window for export options
+    export_window = tk.Toplevel()
+    export_window.title("Export Blueprint")
+
+    # Material Choice Dropdown
+    label_material = ttk.Label(export_window, text="Select Material:")
+    label_material.grid(row=0, column=0, padx=10, pady=10, sticky=tk.E)
+    material_var = tk.StringVar()
+    material_dropdown = ttk.Combobox(export_window, textvariable=material_var, state="readonly",
+                                     values=list(SM_BLOCK_INFO.keys()), width=30)
+    material_dropdown.grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+    material_dropdown.set(list(SM_BLOCK_INFO.keys())[0])  # Set default to first material
+
+    # Thickness Spinbox
+    label_thickness = ttk.Label(export_window, text="Select Thickness (1-8):")
+    label_thickness.grid(row=1, column=0, padx=10, pady=10, sticky=tk.E)
+    thickness_var = tk.IntVar(value=1)
+    thickness_spin = ttk.Spinbox(export_window, from_=1, to=8, textvariable=thickness_var, width=28)
+    thickness_spin.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+
+    # Name Entry
+    label_name = ttk.Label(export_window, text="Blueprint Name:")
+    label_name.grid(row=2, column=0, padx=10, pady=10, sticky=tk.E)
+    name_var = tk.StringVar(value="Wedge Circle")
+    name_entry = ttk.Entry(export_window, textvariable=name_var, width=30)
+    name_entry.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
+
+    # Export Button
+    export_btn = ttk.Button(export_window, text="Export",
+                            command=lambda: perform_export(export_window, rects, wedges, diameter=data_tuple[5],
+                                                         material_choice=material_var.get(),
+                                                         thickness=thickness_var.get(),
+                                                         name=name_var.get()))
+    export_btn.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
+
+def perform_export(export_window, rects, wedges, diameter, material_choice, thickness, name):
+    """
+    Performs the export after user has provided options.
+    """
+    try:
+        blueprint_uuid = blueprint.export_blueprint(rects, wedges, diameter, material_choice, thickness, name)
+        messagebox.showinfo("Success", f"Blueprint exported successfully!\nUUID: {blueprint_uuid}")
+        export_window.destroy()
+    except Exception as e:
+        messagebox.showerror("Export Failed", f"An error occurred during export:\n{str(e)}")

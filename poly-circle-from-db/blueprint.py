@@ -1,0 +1,149 @@
+import os
+import uuid
+import json
+from PIL import Image, ImageDraw
+from constants import SM_BLOCK_INFO
+from tkinter import messagebox
+
+def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, output_directory="output"):
+    """
+    Exports the blueprint based on rects and wedges.
+    """
+    # Validate material_choice
+    if material_choice not in SM_BLOCK_INFO:
+        raise ValueError(f"Invalid material choice: {material_choice}")
+
+    block_info = SM_BLOCK_INFO[material_choice]
+    block_id = block_info["block_id"]
+    wedge_id = block_info["wedge_id"]
+    color = block_info["color"]
+
+    # Generate UUID
+    blueprint_uuid = str(uuid.uuid4())
+
+    # Create output folder
+    blueprint_folder = os.path.join(output_directory, blueprint_uuid)
+    os.makedirs(blueprint_folder, exist_ok=True)
+
+    # Initialize blueprint.json
+    blueprint = {
+        "bodies": [
+            {
+                "childs": []
+            }
+        ],
+        "version": 4
+    }
+
+    # Define scaling and center shift
+    scale = 10  # 10 pixels per unit
+    image_size = diameter * scale  # Image size based on diameter
+    center_shift_x = image_size / 2
+    center_shift_y = image_size / 2
+
+    # Create Image
+    image = Image.new("RGB", (image_size, image_size), color="white")
+    draw = ImageDraw.Draw(image)
+
+    # Insert Rects
+    for rect in rects:
+        x = rect["x"]  # Position relative to center
+        y = rect["y"]
+        width = rect["width"]
+        height = rect["height"]
+
+        # Draw rectangle on image (blue fill, no border)
+        draw.rectangle([
+            (x * scale) + center_shift_x,
+            (y * scale) + center_shift_y,
+            (x + width) * scale + center_shift_x,
+            (y + height) * scale + center_shift_y
+        ], fill="#0000FF", outline=None)
+
+        # Create blueprint child
+        child = {
+            "bounds": {
+                "x": int(width),        # Width of the rectangle
+                "y": int(height),       # Height of the rectangle
+                "z": int(thickness)     # Thickness from user input
+            },
+            "color": color,
+            "pos": {
+                "x": int(x),
+                "y": int(y),
+                "z": 0
+            },
+            "shapeId": block_id,
+            "xaxis": 1,
+            "zaxis": 3
+        }
+
+        blueprint["bodies"][0]["childs"].append(child)
+
+    # Insert Wedges
+    for wedge in wedges:
+        point_a = wedge["point_a"]
+        point_b = wedge["point_b"]
+        point_c = wedge["point_c"]
+        rotation = wedge["rotation"]
+        quadrant = wedge["quadrant"]
+
+        # Calculate width and height based on quadrants
+        bounds_x = thickness
+        if quadrant in ["tl", "br"]: # For tl and br, bounds_y is height and bounds_z is width
+            bounds_y = abs(point_a.y - point_b.y)  # Height
+            bounds_z = abs(point_a.x - point_c.x)  # Width
+        elif quadrant in ["tr", "bl"]: # For tr and bl, bounds_y is width and bounds_z is height
+            bounds_y = abs(point_a.x - point_b.x)  # Width  # TODO: WRONG WRONG WRONG
+            bounds_z = abs(point_a.y - point_c.y)  # Height # TODO: WRONG WRONG WRONG
+
+        # Draw triangle on image (red fill, no border)
+        draw.polygon([
+            (point_a.x * scale + center_shift_x, point_a.y * scale + center_shift_y),
+            (point_b.x * scale + center_shift_x, point_b.y * scale + center_shift_y),
+            (point_c.x * scale + center_shift_x, point_c.y * scale + center_shift_y)
+        ], fill="#FF0000")
+
+        # Create blueprint child
+        child = {
+            "bounds": {
+                "x": int(bounds_x),
+                "y": int(bounds_y),
+                "z": int(bounds_z)
+            },
+            "color": color,
+            "pos": {
+                "x": int(point_c.x),
+                "y": int(point_c.y),
+                "z": 0
+            },
+            "shapeId": wedge_id,
+            "xaxis": rotation["xaxis"],
+            "zaxis": rotation["zaxis"]
+        }
+
+        blueprint["bodies"][0]["childs"].append(child)
+
+    # Save blueprint.json
+    blueprint_path = os.path.join(blueprint_folder, "blueprint.json")
+    with open(blueprint_path, "w") as f:
+        json.dump(blueprint, f, indent=4)
+
+    # Resize image to 128x128 and save as icon.png
+    icon = image.resize((128, 128), Image.LANCZOS)  # Fixed to use LANCZOS
+    icon_path = os.path.join(blueprint_folder, "icon.png")
+    icon.save(icon_path, "PNG")
+
+    # Create description.json
+    description = {
+        "description" : "#{STEAM_WORKSHOP_NO_DESCRIPTION}",
+        "localId" : blueprint_uuid,
+        "name" : name,
+        "type" : "Blueprint",
+        "version" : 0
+    }
+    description_path = os.path.join(blueprint_folder, "description.json")
+    with open(description_path, "w") as f:
+        json.dump(description, f, indent=4)
+
+    return blueprint_uuid  # Return the UUID for confirmation
