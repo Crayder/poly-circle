@@ -46,23 +46,15 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
         A = Point(*sorted_pts[i])
         B = Point(*sorted_pts[(i + 1) % num_points])
 
-        #### print(f"[START] Processing edge from A {A} to B {B}")
-
         delta_x = B.x - A.x
         delta_y = B.y - A.y
 
-        #### print(f"Delta X: {delta_x}, Delta Y: {delta_y}")
-
         if delta_x == 0 or delta_y == 0:
-            #### print("Edge is vertical or horizontal, not a wedge.")
             # Vertical or Horizontal Line (already handled in plotting)
-            # A.x < center and A.x equals B.x
-            if A.x < center_x and B.x == A.x:
-                #### print(f"Is a left edge, adding A {A} to B {B} to left_edges.")
+            if A.x < center_x and (B.x == A.x or B.x == 0):
                 # Left vertical edge
                 left_edges.append({"point_a": A, "point_b": B})
         else:
-            #### print("Edge is diagonal, creating wedge.")
             # Diagonal Line, need to create a wedge
             quadrant = determine_quadrant(A, center_x, center_y)
             wedge = {
@@ -74,38 +66,28 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
             }
 
             if quadrant == "tl":
-                #### print("Is a top-left wedge:")
                 # Top-Left Quadrant
                 C = Point(A.x + delta_x, A.y)
                 wedge["point_c"] = C
                 wedge["rotation"]["zaxis"] = -1
-                #### print(f" - Wedge: {wedge}")
-                #### print(f" - Left edge: C {C} to B {B}")
                 left_edges.append({"point_a": C, "point_b": B})
             elif quadrant == "tr":
-                #### print("Is a top-right wedge:")
                 # Top-Right Quadrant
                 C = Point(A.x, A.y + delta_y)
                 wedge["point_c"] = C
                 wedge["rotation"]["zaxis"] = 2
-                #### print(f" - Wedge: {wedge}")
                 # No left edge to add
             elif quadrant == "br":
-                #### print("Is a bottom-right wedge:")
                 # Bottom-Right Quadrant
                 C = Point(A.x + delta_x, A.y)
                 wedge["point_c"] = C
                 wedge["rotation"]["zaxis"] = 1
-                #### print(f" - Wedge: {wedge}")
                 # No left edge to add
             elif quadrant == "bl":
-                #### print("Is a bottom-left wedge:")
                 # Bottom-Left Quadrant
                 C = Point(A.x, A.y + delta_y)
                 wedge["point_c"] = C
                 wedge["rotation"]["zaxis"] = -2
-                #### print(f" - Wedge: {wedge}")
-                #### print(f" - Left edge: A {A} to C {C}")
                 left_edges.append({"point_a": A, "point_b": C})
 
             wedges.append(wedge)
@@ -114,7 +96,6 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
     for edge in left_edges:
         point_a = edge["point_a"]
         point_b = edge["point_b"]
-        #### print(f"Processing left edge from A {point_a} to B {point_b}")
 
         rect = {
             "x": point_a.x,
@@ -122,7 +103,6 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
             "width": abs(point_a.x - center_x) * 2,
             "height": abs(point_a.y - point_b.y)
         }
-        #### print(f" - Rect: {rect}")
         rects.append(rect)
 
     return rects, wedges
