@@ -97,6 +97,10 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
         point_a = edge["point_a"]
         point_b = edge["point_b"]
 
+        # If 0 width/height skip this edge
+        if point_a.x == point_b.x or point_a.y == point_b.y:
+            continue
+
         rect = {
             "x": point_a.x,
             "y": point_a.y,
