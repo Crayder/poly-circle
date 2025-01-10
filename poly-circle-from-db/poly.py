@@ -23,7 +23,7 @@ def determine_quadrant(point_a, point_b, center_x, center_y):
     # First get middle point between A and B
     x = (point_a.x + point_b.x) / 2
     y = (point_a.y + point_b.y) / 2
-    
+
     # Now determine the quadrant of their middle point
     if x < center_x and y >= center_y:
         return 'tl'
@@ -112,5 +112,13 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
             "height": abs(point_a.y - point_b.y)
         }
         rects.append(rect)
+    
+    # TODO: Need to break down wedges here. Specifically ones that are bigger than 8x8. Then generate rects for the empty space created within the wedge.
+    # Loop through the wedges. Check size.
+    # If size is greater than 8x8. We already know the wedge can be broken down, since the database already only allows 8x8.
+    #   Calculate smaller wedge size by getting greatest common divisor of width and height. Divide width and height by that number. Keep track of how many smaller wedges we need.
+    #   Create new wedges that are the size of the smaller wedge.
+    #   Position the smaller wedges within the larger wedge so the diagonal line is the same. Rotation for each will be the same as the larger wedge.
+    #   Add the smaller wedges to the wedges list. Remove the larger wedge.
 
     return rects, wedges
