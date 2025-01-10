@@ -15,12 +15,16 @@ def sort_grid_points(center_x, center_y, grid_points):
     # Sort in descending order for clockwise
     return sorted(grid_points, key=calculate_angle, reverse=True)
 
-def determine_quadrant(point, center_x, center_y):
+def determine_quadrant(point_a, point_b, center_x, center_y):
     """
     Determines the quadrant of a point relative to the center.
     Returns one of 'tl', 'tr', 'br', 'bl' for top-left, top-right, bottom-right, bottom-left.
     """
-    x, y = point
+    # First get middle point between A and B
+    x = (point_a.x + point_b.x) / 2
+    y = (point_a.y + point_b.y) / 2
+    
+    # Now determine the quadrant of their middle point
     if x < center_x and y >= center_y:
         return 'tl'
     elif x >= center_x and y >= center_y:
@@ -56,7 +60,7 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
                 left_edges.append({"point_a": A, "point_b": B})
         else:
             # Diagonal Line, need to create a wedge
-            quadrant = determine_quadrant(A, center_x, center_y)
+            quadrant = determine_quadrant(A, B, center_x, center_y)
             wedge = {
                 "point_a": A,
                 "point_b": B,
