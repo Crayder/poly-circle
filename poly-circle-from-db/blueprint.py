@@ -5,7 +5,22 @@ from PIL import Image, ImageDraw
 from constants import SM_BLOCK_INFO
 from tkinter import messagebox
 
-def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, output_directory="output"):
+def get_blueprints_directory():
+    blueprint_dir = os.path.join(os.getenv('APPDATA'), 'Axolot Games', 'Scrap Mechanic', 'User')
+    if not os.path.exists(blueprint_dir):
+        return None
+
+    user_dirs = [d for d in os.listdir(blueprint_dir) if d.startswith('User_')]
+    if not user_dirs:
+        return None
+
+    blueprint_dir = os.path.join(blueprint_dir, user_dirs[0], 'Blueprints')
+    if os.path.exists(blueprint_dir):
+        return blueprint_dir
+    else:
+        return None
+
+def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity, output_directory=None):
     """
     Exports the blueprint based on rects and wedges.
     """
@@ -21,12 +36,21 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
     # Generate UUID
     blueprint_uuid = str(uuid.uuid4())
 
+    # Determine output directory
+    if output_directory is None:
+        blueprint_folder = get_blueprints_directory()
+        if blueprint_folder is None:
+            # Fallback to default "output" directory if Scrap Mechanic Blueprints directory not found
+            blueprint_folder = os.path.join(os.getcwd(), "output")
+    else:
+        blueprint_folder = output_directory
+
     # Create output folder
-    blueprint_folder = os.path.join(output_directory, blueprint_uuid)
+    blueprint_folder = os.path.join(blueprint_folder, blueprint_uuid)
     os.makedirs(blueprint_folder, exist_ok=True)
 
     # Initialize blueprint.json
-    blueprint = {
+    blueprint_data = {
         "bodies": [
             {
                 "childs": []
@@ -35,7 +59,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
         "version": 4
     }
 
-    # Define scaling and center shift
+    # Define scaling and center shift for PNG image
     scale = 10  # 10 pixels per unit
     image_size = diameter * scale  # Image size based on diameter
     center_shift_x = image_size / 2
@@ -78,7 +102,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
             "zaxis": 3
         }
 
-        blueprint["bodies"][0]["childs"].append(child)
+        blueprint_data["bodies"][0]["childs"].append(child)
 
     # Insert Wedges
     for wedge in wedges:
@@ -94,8 +118,8 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
             bounds_y = abs(point_a.y - point_b.y)  # Height
             bounds_z = abs(point_a.x - point_c.x)  # Width
         elif quadrant in ["tr", "bl"]: # For tr and bl, bounds_y is width and bounds_z is height
-            bounds_y = abs(point_a.x - point_b.x)  # Width  # TODO: WRONG WRONG WRONG
-            bounds_z = abs(point_a.y - point_c.y)  # Height # TODO: WRONG WRONG WRONG
+            bounds_y = abs(point_a.x - point_b.x)  # Width
+            bounds_z = abs(point_a.y - point_c.y)  # Height
 
         # Draw triangle on image (red fill, no border)
         draw.polygon([
@@ -122,25 +146,31 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
             "zaxis": rotation["zaxis"]
         }
 
-        blueprint["bodies"][0]["childs"].append(child)
+        blueprint_data["bodies"][0]["childs"].append(child)
 
     # Save blueprint.json
     blueprint_path = os.path.join(blueprint_folder, "blueprint.json")
     with open(blueprint_path, "w") as f:
-        json.dump(blueprint, f, indent=4)
+        json.dump(blueprint_data, f, indent=4)
 
     # Resize image to 128x128 and save as icon.png
     icon = image.resize((128, 128), Image.LANCZOS)  # Fixed to use LANCZOS
     icon_path = os.path.join(blueprint_folder, "icon.png")
     icon.save(icon_path, "PNG")
 
-    # Create description.json
+    # Create description.json with detailed information
     description = {
-        "description" : "#{STEAM_WORKSHOP_NO_DESCRIPTION}",
-        "localId" : blueprint_uuid,
-        "name" : name,
-        "type" : "Blueprint",
-        "version" : 0
+        "description": (
+            f"Real Radius: {real_radius}\n"
+            f"Diameter: {diameter}\n"
+            f"Sides: {sides}\n"
+            f"Circularity: {circularity}\n"
+            f"Uniformity: {uniformity}"
+        ),
+        "localId": blueprint_uuid,
+        "name": name,
+        "type": "Blueprint",
+        "version": 0
     }
     description_path = os.path.join(blueprint_folder, "description.json")
     with open(description_path, "w") as f:

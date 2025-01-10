@@ -398,7 +398,7 @@ def insert_rows(tree, rows, canvas_frame):
     # Insert into the TreeView
     # columns = ("tested_radius", "sides", "real_radius", "max_diff", "max_width", "diameter", "circularity", "uniformity", "odd_center")
     for row in sorted_rows:
-        # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, odd_center, uniformity)
+        # row is (tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val, uniformity)
         tested_radius, sides, real_radius, max_diff, max_width, diameter, circularity, grid_points, oc_val, uniformity = row
 
         # Insert into the tree
@@ -443,9 +443,6 @@ def on_export_click(tree):
     # Ensure that rects and wedges are available
     rects = getattr(tree, 'current_rects', [])
     wedges = getattr(tree, 'current_wedges', [])
-    if not rects or not wedges:
-        messagebox.showerror("Error", "Rectangle and Wedge data are unavailable for the selected polygon.")
-        return
 
     # Create a new top-level window for export options
     export_window = tk.Toplevel()
@@ -470,7 +467,11 @@ def on_export_click(tree):
     # Name Entry
     label_name = ttk.Label(export_window, text="Blueprint Name:")
     label_name.grid(row=2, column=0, padx=10, pady=10, sticky=tk.E)
-    name_var = tk.StringVar(value="Wedge Circle")
+    # Set default name with diameter and sides
+    diameter = data_tuple[5]
+    sides = data_tuple[1]
+    default_name = f"Wedge Circle - {diameter} Diameter / {sides} Sides"
+    name_var = tk.StringVar(value=default_name)
     name_entry = ttk.Entry(export_window, textvariable=name_var, width=30)
     name_entry.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
 
@@ -479,15 +480,19 @@ def on_export_click(tree):
                             command=lambda: perform_export(export_window, rects, wedges, diameter=data_tuple[5],
                                                          material_choice=material_var.get(),
                                                          thickness=thickness_var.get(),
-                                                         name=name_var.get()))
+                                                         name=name_var.get(),
+                                                         real_radius=data_tuple[2],
+                                                         sides=data_tuple[1],
+                                                         circularity=data_tuple[6],
+                                                         uniformity=data_tuple[8]))
     export_btn.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
 
-def perform_export(export_window, rects, wedges, diameter, material_choice, thickness, name):
+def perform_export(export_window, rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity):
     """
     Performs the export after user has provided options.
     """
     try:
-        blueprint_uuid = blueprint.export_blueprint(rects, wedges, diameter, material_choice, thickness, name)
+        blueprint_uuid = blueprint.export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity)
         messagebox.showinfo("Success", f"Blueprint exported successfully!\nUUID: {blueprint_uuid}")
         export_window.destroy()
     except Exception as e:
