@@ -65,6 +65,15 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
     center_shift_x = image_size / 2
     center_shift_y = image_size / 2
 
+    # Adjust center based on diamater. If odd diameter, center is at (0.5, 0.5), else (0, 0)
+    odd_center = diameter % 2 == 1
+    center_x = 0.5 if odd_center else 0
+    center_y = 0.5 if odd_center else 0
+
+    # Adjust center_shift based on new center
+    center_shift_x -= center_x * scale
+    center_shift_y -= center_y * scale
+
     # Create Image
     image = Image.new("RGB", (image_size, image_size), color="white")
     draw = ImageDraw.Draw(image)
@@ -154,7 +163,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
         json.dump(blueprint_data, f, indent=4)
 
     # Resize image to 128x128 and save as icon.png
-    icon = image.resize((128, 128), Image.LANCZOS)  # Fixed to use LANCZOS
+    icon = image.resize((128, 128), Image.LANCZOS)
     icon_path = os.path.join(blueprint_folder, "icon.png")
     icon.save(icon_path, "PNG")
 
@@ -163,6 +172,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
         "description": (
             f"Real Radius: {real_radius}\n"
             f"Diameter: {diameter}\n"
+            f"Thickness: {thickness}\n"
             f"Sides: {sides}\n"
             f"Circularity: {circularity}\n"
             f"Uniformity: {uniformity}"
