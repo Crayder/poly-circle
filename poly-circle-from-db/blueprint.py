@@ -75,7 +75,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
     center_shift_y -= center_y * scale
 
     # Create Image
-    image = Image.new("RGB", (image_size, image_size), color="white")
+    image = Image.new("RGBA", (image_size, image_size), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     # Insert Rects
@@ -91,7 +91,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
             (y * scale) + center_shift_y,
             (x + width) * scale + center_shift_x,
             (y + height) * scale + center_shift_y
-        ], fill="#0000FF", outline=None)
+        ], fill=(0, 0, 255, 255), outline=None)
 
         # Create blueprint child
         child = {
@@ -135,7 +135,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
             (point_a.x * scale + center_shift_x, point_a.y * scale + center_shift_y),
             (point_b.x * scale + center_shift_x, point_b.y * scale + center_shift_y),
             (point_c.x * scale + center_shift_x, point_c.y * scale + center_shift_y)
-        ], fill="#FF0000")
+        ], fill=(255, 0, 0, 255), outline=None)
 
         # Create blueprint child
         child = {
