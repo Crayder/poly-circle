@@ -48,39 +48,118 @@ def deteriorate_large_wedges(wedges):
     #   Add the smaller wedges to the wedges list. Remove the larger wedge.
     #
     # Pseudo code:
+    # new_wedges = []
+    # new_rects = []
     # for wedge in wedges:
     #     if wedge is larger than 8x8:
     #         gcd = greatest_common_divisor(wedge.width, wedge.height)
     #         new_width = wedge.width / gcd
     #         new_height = wedge.height / gcd
     #         num_wedges = gcd
-    #         left_edges = []
     #         for i in range(num_wedges):
     #             new_wedge = {
     #                 "point_a": {"x": 0, "y": 0},
     #                 "point_b": {"x": 0, "y": 0},
     #                 "point_c": {"x": 0, "y": 0},
-    #                 "rotation": wedge.rotation,
-    #                 "quadrant": wedge.quadrant
+    #                 "rotation": wedge['rotation'],
+    #                 "quadrant": wedge['quadrant']
     #             }
-    #             # Calculate the points of the new wedge based on the quadrant
-    #             if wedge.quadrant == 'tl': # Top Left
-    #                 new_wedge.point_a.x = wedge.point_a.x + (i * new_width)
-    #                 new_wedge.point_a.y = wedge.point_a.y - (i * new_height)
-    #                 new_wedge.point_b.x = new_wedge.point_a.x + new_width
-    #                 new_wedge.point_b.y = new_wedge.point_a.y + new_height
-    #                 new_wedge.point_c.x = new_wedge.point_a.x + new_width
-    #                 new_wedge.point_c.y = new_wedge.point_a.y
-    #                 left_edges.append({"point_a": new_wedge.point_a, "point_b": new_wedge.point_c})
+    #             new_rect = {
+    #                 "x": 0,
+    #                 "y": 0,
+    #                 "width": (wedge['point_b'].x - wedge['point_a'].x) - (new_width * i),
+    #                 "height": new_height # Height is the same as the new wedge height.
+    #             }
+    #             
+    #             # Calculate the points of the new wedge based on the quadrant, and the new rect position.
+    #             if wedge['quadrant'] == 'tl': # Top Left
+    #                 new_wedge['point_a'].x = wedge['point_a'].x + (i * new_width)
+    #                 new_wedge['point_a'].y = wedge['point_a'].y - (i * new_height)
+    #                 new_wedge['point_b'].x = new_wedge['point_a'].x + new_width
+    #                 new_wedge['point_b'].y = new_wedge['point_a'].y + new_height
+    #                 new_wedge['point_c'].x = new_wedge['point_a'].x + new_width
+    #                 new_wedge['point_c'].y = new_wedge['point_a'].y
+    #                 new_rect['x'] = new_wedge['point_a'].x + new_width
+    #                 new_rect['y'] = new_wedge['point_a'].y
+    #             if wedge['quadrant'] == 'tr': # Top Right
     #             ...
-    #             wedges.append(new_wedge)
+    #
+    #             # Add the new wedge and rect to the lists.
+    #             new_wedges.append(new_wedge)
+    #             # If new rect width is greater than 0, add the new rect to the rects list.
+    #             if new_rect['width'] > 0:
+    #                 new_rects.append(new_rect)
     #          wedges.remove(wedge)
 
-    for wedge in wedges:
-        # TODO
-        pass
-    
-    return wedges
+    new_wedges = []
+    new_rects = []
+    for wedge in wedges[:]:
+        width = int(abs(wedge['point_b'].x - wedge['point_a'].x))
+        height = int(abs(wedge['point_b'].y - wedge['point_a'].y))
+        if width > 8 or height > 8:
+            gcd = math.gcd(width, height)
+            new_width = width // gcd
+            new_height = height // gcd
+            num_wedges = gcd
+            for i in range(num_wedges):
+                new_wedge = {
+                    "point_a": Point(0, 0),
+                    "point_b": Point(0, 0),
+                    "point_c": Point(0, 0),
+                    "rotation": wedge['rotation'],
+                    "quadrant": wedge['quadrant']
+                }
+                new_rect = {
+                    "x": 0,
+                    "y": 0,
+                    "width": abs(wedge['point_b'].x - wedge['point_a'].x) - (new_width * i),
+                    "height": new_height # Height is the same as the new wedge height.
+                }
+
+                # Calculate the points of the new wedge based on the quadrant, and the new rect position.
+                if wedge['quadrant'] == 'tl': # Top Left
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y - (i * new_height))
+                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y + new_height)
+                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_wedge['point_a'] = new_point_a
+                    new_wedge['point_b'] = new_point_b
+                    new_wedge['point_c'] = new_point_c
+                    new_rect['x'] = new_point_a.x + new_width
+                    new_rect['y'] = new_point_a.y
+                if wedge['quadrant'] == 'tr': # Top Right
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y + (i * new_height))
+                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y - new_height)
+                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_wedge['point_a'] = new_point_a
+                    new_wedge['point_b'] = new_point_b
+                    new_wedge['point_c'] = new_point_c
+                    new_rect['x'] = new_point_a.x
+                    new_rect['y'] = new_point_a.y - new_height
+                if wedge['quadrant'] == 'br': # Bottom Right
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y + (i * new_height))
+                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y + new_height)
+                    new_wedge['point_a'] = new_point_a
+                    new_wedge['point_b'] = new_point_b
+                    new_wedge['point_c'] = new_point_c
+                    new_rect['x'] = new_point_a.x
+                    new_rect['y'] = new_point_a.y
+                if wedge['quadrant'] == 'bl': # Bottom Left
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y - (i * new_height))
+                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y + new_height)
+                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_wedge['point_a'] = new_point_a
+                    new_wedge['point_b'] = new_point_b
+                    new_wedge['point_c'] = new_point_c
+                    new_rect['x'] = new_point_a.x
+                    new_rect['y'] = new_point_a.y
+                # Add the new wedge and rect to the lists.
+                new_wedges.append(new_wedge)
+                # If new rect width is greater than 0, add the new rect to the new_rects list.
+                if new_rect['width'] > 0:
+                    new_rects.append(new_rect)
+            wedges.remove(wedge)
+    return new_wedges, new_rects
 
 def convert_polygon_to_blueprint(grid_points, center_x, center_y):
     """
@@ -160,8 +239,5 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
             "height": abs(point_a.y - point_b.y)
         }
         rects.append(rect)
-    
-    # Deteriorate large wedges
-    wedges = deteriorate_large_wedges(wedges)
 
     return rects, wedges

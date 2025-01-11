@@ -4,6 +4,7 @@ import json
 from PIL import Image, ImageDraw
 from constants import SM_BLOCK_INFO
 from tkinter import messagebox
+from poly import deteriorate_large_wedges
 
 def get_blueprints_directory():
     blueprint_dir = os.path.join(os.getenv('APPDATA'), 'Axolot Games', 'Scrap Mechanic', 'User')
@@ -77,6 +78,10 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
     # Create Image
     image = Image.new("RGBA", (image_size, image_size), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
+
+    # Deteriorate large wedges
+    wedges, new_rects = deteriorate_large_wedges(wedges)
+    rects.extend(new_rects)
 
     # Insert Rects
     for rect in rects:
