@@ -34,6 +34,54 @@ def determine_quadrant(point_a, point_b, center_x, center_y):
     elif x < center_x and y < center_y:
         return 'bl'
 
+def deteriorate_large_wedges(wedges):
+    """
+    Deteriorates large wedges into smaller wedges that are less than 8x8.
+    """
+    
+    # TODO: Need to break down wedges here. Specifically ones that are bigger than 8x8. Then generate rects for the empty space created within the wedge.
+    # Loop through the wedges. Check size.
+    # If size is greater than 8x8. We already know the wedge can be broken down, since the database already only allows 8x8.
+    #   Calculate smaller wedge size by getting greatest common divisor of width and height. Divide width and height by that number. The value of the GCD is how many small wedges we'll need.
+    #   Create new wedges that are the size of the smaller wedge.
+    #   Position the smaller wedges within the larger wedge so the diagonal line is the same. Rotation for each will be the same as the larger wedge.
+    #   Add the smaller wedges to the wedges list. Remove the larger wedge.
+    #
+    # Pseudo code:
+    # for wedge in wedges:
+    #     if wedge is larger than 8x8:
+    #         gcd = greatest_common_divisor(wedge.width, wedge.height)
+    #         new_width = wedge.width / gcd
+    #         new_height = wedge.height / gcd
+    #         num_wedges = gcd
+    #         left_edges = []
+    #         for i in range(num_wedges):
+    #             new_wedge = {
+    #                 "point_a": {"x": 0, "y": 0},
+    #                 "point_b": {"x": 0, "y": 0},
+    #                 "point_c": {"x": 0, "y": 0},
+    #                 "rotation": wedge.rotation,
+    #                 "quadrant": wedge.quadrant
+    #             }
+    #             # Calculate the points of the new wedge based on the quadrant
+    #             if wedge.quadrant == 'tl': # Top Left
+    #                 new_wedge.point_a.x = wedge.point_a.x + (i * new_width)
+    #                 new_wedge.point_a.y = wedge.point_a.y - (i * new_height)
+    #                 new_wedge.point_b.x = new_wedge.point_a.x + new_width
+    #                 new_wedge.point_b.y = new_wedge.point_a.y + new_height
+    #                 new_wedge.point_c.x = new_wedge.point_a.x + new_width
+    #                 new_wedge.point_c.y = new_wedge.point_a.y
+    #                 left_edges.append({"point_a": new_wedge.point_a, "point_b": new_wedge.point_c})
+    #             ...
+    #             wedges.append(new_wedge)
+    #          wedges.remove(wedge)
+
+    for wedge in wedges:
+        # TODO
+        pass
+    
+    return wedges
+
 def convert_polygon_to_blueprint(grid_points, center_x, center_y):
     """
     Converts a polygon defined by grid_points into rects and wedges for blueprint export.
@@ -113,12 +161,7 @@ def convert_polygon_to_blueprint(grid_points, center_x, center_y):
         }
         rects.append(rect)
     
-    # TODO: Need to break down wedges here. Specifically ones that are bigger than 8x8. Then generate rects for the empty space created within the wedge.
-    # Loop through the wedges. Check size.
-    # If size is greater than 8x8. We already know the wedge can be broken down, since the database already only allows 8x8.
-    #   Calculate smaller wedge size by getting greatest common divisor of width and height. Divide width and height by that number. Keep track of how many smaller wedges we need.
-    #   Create new wedges that are the size of the smaller wedge.
-    #   Position the smaller wedges within the larger wedge so the diagonal line is the same. Rotation for each will be the same as the larger wedge.
-    #   Add the smaller wedges to the wedges list. Remove the larger wedge.
+    # Deteriorate large wedges
+    wedges = deteriorate_large_wedges(wedges)
 
     return rects, wedges
