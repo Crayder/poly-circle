@@ -475,6 +475,8 @@ def on_export_click(tree):
     name_entry = ttk.Entry(export_window, textvariable=name_var, width=30)
     name_entry.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
 
+    # TODO: Add checkbox that will make large wedge deterioration optional. Checked by default. This will need passed to `blueprint.export_blueprint` and handled there.
+
     # Export Button
     export_btn = ttk.Button(export_window, text="Export",
                             command=lambda: perform_export(export_window, rects, wedges, diameter=data_tuple[5],
