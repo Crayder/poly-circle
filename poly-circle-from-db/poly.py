@@ -34,6 +34,13 @@ def determine_quadrant(point_a, point_b, center_x, center_y):
     elif x < center_x and y < center_y:
         return 'bl'
 
+def get_common_divisors(a, b):
+    divisors = []
+    for i in range(1, min(a, b) + 1):
+        if a % i == 0 and b % i == 0:
+            divisors.append(i)
+    return sorted(divisors)
+
 def deteriorate_large_wedges(wedges):
     """
     Deteriorates large wedges into smaller wedges that are less than 8x8.
@@ -44,10 +51,22 @@ def deteriorate_large_wedges(wedges):
         width = int(abs(wedge['point_b'].x - wedge['point_a'].x))
         height = int(abs(wedge['point_b'].y - wedge['point_a'].y))
         if width > 8 or height > 8:
-            num_wedges = math.gcd(width, height)
-            new_width = width // num_wedges
-            new_height = height // num_wedges
-            # TODO: Instead of the above gcd approach... We should get all the common divisors of width and height, then check each and choose the lowest one that produces a size that is less than 8x8.
+            # Choose the common divisor that produces the largest new wedge size <= 8x8.
+            common_divs = get_common_divisors(width, height)
+            chosen_divisor = None
+            for d in common_divs:
+                trial_new_width = width // d
+                trial_new_height = height // d
+                if trial_new_width <= 8 and trial_new_height <= 8:
+                    chosen_divisor = d  # Since common_divs is sorted in increasing order, keep updating
+                    break
+            # If none found, fallback to the original approach (using gcd)
+            if chosen_divisor is None:
+                chosen_divisor = math.gcd(width, height)
+            # Calculate the new wedge dimensions and number of wedges
+            num_wedges = chosen_divisor
+            new_width = width // chosen_divisor
+            new_height = height // chosen_divisor
             for i in range(num_wedges):
                 new_wedge = {
                     "point_a": Point(0, 0),
