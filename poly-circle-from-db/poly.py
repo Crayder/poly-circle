@@ -67,9 +67,9 @@ def deteriorate_large_wedges(wedges):
                 # Calculate the points of the new wedge based on the quadrant, and the new rect position.
                 if wedge['quadrant'] == 'tl': # Top Left
                     # TODO: THIS WEDGE IS WRONG
-                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y - (i * new_height))
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y + (i * new_height))
                     new_point_b = Point(new_point_a.x + new_width, new_point_a.y + new_height)
-                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_point_c = Point(new_point_b.x, new_point_a.y)
                     new_wedge['point_a'] = new_point_a
                     new_wedge['point_b'] = new_point_b
                     new_wedge['point_c'] = new_point_c
@@ -80,9 +80,9 @@ def deteriorate_large_wedges(wedges):
                     new_rect['y'] = wedge['point_c'].y + (i * new_height)
                 if wedge['quadrant'] == 'tr': # Top Right
                     # TODO: THIS WEDGE IS WRONG
-                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y + (i * new_height))
+                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y - (i * new_height))
                     new_point_b = Point(new_point_a.x + new_width, new_point_a.y - new_height)
-                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_point_c = Point(new_point_a.x, new_point_b.y)
                     new_wedge['point_a'] = new_point_a
                     new_wedge['point_b'] = new_point_b
                     new_wedge['point_c'] = new_point_c
@@ -93,9 +93,9 @@ def deteriorate_large_wedges(wedges):
                     new_rect['y'] = wedge['point_c'].y
                 if wedge['quadrant'] == 'br': # Bottom Right
                     # TODO: THIS WEDGE IS WRONG
-                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y + (i * new_height))
-                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y)
-                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y + new_height)
+                    new_point_a = Point(wedge['point_a'].x - (i * new_width), wedge['point_a'].y - (i * new_height))
+                    new_point_b = Point(new_point_a.x - new_width, new_point_a.y - new_height)
+                    new_point_c = Point(new_point_b.x, new_point_a.y)
                     new_wedge['point_a'] = new_point_a
                     new_wedge['point_b'] = new_point_b
                     new_wedge['point_c'] = new_point_c
@@ -106,9 +106,9 @@ def deteriorate_large_wedges(wedges):
                     new_rect['y'] = wedge['point_c'].y - ((i + 1) * new_height)
                 if wedge['quadrant'] == 'bl': # Bottom Left
                     # TODO: THIS WEDGE IS WRONG
-                    new_point_a = Point(wedge['point_a'].x + (i * new_width), wedge['point_a'].y - (i * new_height))
-                    new_point_b = Point(new_point_a.x + new_width, new_point_a.y + new_height)
-                    new_point_c = Point(new_point_a.x + new_width, new_point_a.y)
+                    new_point_a = Point(wedge['point_a'].x - (i * new_width), wedge['point_a'].y + (i * new_height))
+                    new_point_b = Point(new_point_a.x - new_width, new_point_a.y + new_height)
+                    new_point_c = Point(new_point_a.x, new_point_b.y)
                     new_wedge['point_a'] = new_point_a
                     new_wedge['point_b'] = new_point_b
                     new_wedge['point_c'] = new_point_c
@@ -124,7 +124,9 @@ def deteriorate_large_wedges(wedges):
                 if new_rect['width'] > 0 and new_rect['height'] > 0:
                     new_rects.append(new_rect)
                     print(f"Adding new_rect: {new_rect}")
-            wedges.remove(wedge)
+        else:
+            # The wedge is already small enough, add it to the new_wedges list.
+            new_wedges.append(wedge)
     return new_wedges, new_rects
 
 def convert_polygon_to_blueprint(grid_points, center_x, center_y):
