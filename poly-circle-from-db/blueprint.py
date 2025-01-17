@@ -21,7 +21,7 @@ def get_blueprints_directory():
     else:
         return None
 
-def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity, output_directory=None):
+def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity, center_marker=False, output_directory=None):
     """
     Exports the blueprint based on rects and wedges.
     """
@@ -66,7 +66,7 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
     center_shift_x = image_size / 2
     center_shift_y = image_size / 2
 
-    # Adjust center based on diamater. If odd diameter, center is at (0.5, 0.5), else (0, 0)
+    # Adjust center based on diameter. If odd diameter, center is at (0.5, 0.5), else (0, 0)
     odd_center = diameter % 2 == 1
     center_x = 0.5 if odd_center else 0
     center_y = 0.5 if odd_center else 0
@@ -128,10 +128,10 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
 
         # Calculate width and height based on quadrants
         bounds_x = thickness
-        if quadrant in ["tl", "br"]: # For tl and br, bounds_y is height and bounds_z is width
+        if quadrant in ["tl", "br"]:  # For tl and br, bounds_y is height and bounds_z is width
             bounds_y = abs(point_a.y - point_b.y)  # Height
             bounds_z = abs(point_a.x - point_c.x)  # Width
-        elif quadrant in ["tr", "bl"]: # For tr and bl, bounds_y is width and bounds_z is height
+        elif quadrant in ["tr", "bl"]:  # For tr and bl, bounds_y is width and bounds_z is height
             bounds_y = abs(point_a.x - point_b.x)  # Width
             bounds_z = abs(point_a.y - point_c.y)  # Height
 
@@ -161,6 +161,34 @@ def export_blueprint(rects, wedges, diameter, material_choice, thickness, name, 
         }
 
         blueprint_data["bodies"][0]["childs"].append(child)
+
+    # --- New: Add Center Marker if requested ---
+    if center_marker:
+        # If the diameter is odd then place a 1x1x1 marker; if even, a 2x2x1 marker.
+        if odd_center:
+            marker_size = 1
+            marker_pos = {"x": 0, "y": 0}  # For odd center, the marker fits exactly when placed at (0,0)
+        else:
+            marker_size = 2
+            marker_pos = {"x": -1, "y": -1}  # For even diameter, shift so that the 2x2 marker is centered
+        # Place the marker exactly one block above the rest of the blueprint.
+        marker_child = {
+            "bounds": {
+                "x": marker_size,
+                "y": marker_size,
+                "z": 1
+            },
+            "color": SM_BLOCK_INFO["caution"]["color"],
+            "pos": {
+                "x": marker_pos["x"],
+                "y": marker_pos["y"],
+                "z": thickness  # Exactly 1 block above the rest (base is of height 'thickness')
+            },
+            "shapeId": "09ca2713-28ee-4119-9622-e85490034758",
+            "xaxis": 1,
+            "zaxis": 3
+        }
+        blueprint_data["bodies"][0]["childs"].append(marker_child)
 
     # Save blueprint.json
     blueprint_path = os.path.join(blueprint_folder, "blueprint.json")

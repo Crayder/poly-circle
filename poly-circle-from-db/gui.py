@@ -475,26 +475,31 @@ def on_export_click(tree):
     name_entry = ttk.Entry(export_window, textvariable=name_var, width=30)
     name_entry.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
 
-    # TODO: Add checkbox that will make large wedge deterioration optional. Checked by default. This will need passed to `blueprint.export_blueprint` and handled there.
+    # --- New: Place Center Marker Checkbox ---
+    center_marker_var = tk.BooleanVar(value=False)
+    center_marker_check = ttk.Checkbutton(export_window, text="Place Center Marker", variable=center_marker_var)
+    center_marker_check.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
 
     # Export Button
     export_btn = ttk.Button(export_window, text="Export",
                             command=lambda: perform_export(export_window, rects, wedges, diameter=data_tuple[5],
-                                                         material_choice=material_var.get(),
-                                                         thickness=thickness_var.get(),
-                                                         name=name_var.get(),
-                                                         real_radius=data_tuple[2],
-                                                         sides=data_tuple[1],
-                                                         circularity=data_tuple[6],
-                                                         uniformity=data_tuple[8]))
-    export_btn.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
+                                material_choice=material_var.get(),
+                                thickness=thickness_var.get(),
+                                name=name_var.get(),
+                                real_radius=data_tuple[2],
+                                sides=data_tuple[1],
+                                circularity=data_tuple[6],
+                                uniformity=data_tuple[8],
+                                center_marker=center_marker_var.get()  # new parameter
+                            ))
+    export_btn.grid(row=4, column=0, columnspan=2, padx=10, pady=20)
 
-def perform_export(export_window, rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity):
+def perform_export(export_window, rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity, center_marker):
     """
     Performs the export after user has provided options.
     """
     try:
-        blueprint_uuid = blueprint.export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity)
+        blueprint_uuid = blueprint.export_blueprint(rects, wedges, diameter, material_choice, thickness, name, real_radius, sides, circularity, uniformity, center_marker)
         messagebox.showinfo("Success", f"Blueprint exported successfully!\nUUID: {blueprint_uuid}")
         export_window.destroy()
     except Exception as e:
